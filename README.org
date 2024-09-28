@@ -30,15 +30,16 @@ SG is a c api, but works well in C++ too when using an container such as a std::
 Please note that error checking has been omited for clarity.
 
 #+begin_src c++
-// Get the size of the vertices that will be returned (note the output data pointer is nullptr)
-unsigned int vertices_length;
-sg_cube_positions(5, 5, 1, nullptr, &vertices_length);
+// Get the size of the vertices that will be returned
+// note the output data pointer is 'nullptr' to specify we want the length
+unsigned int length;
+sg_cube_positions(5, 5, 1, nullptr, &length);
 
 // scale the buffer to the size of the return
-std::vector<sg_position> vertices(vertices_length);
+std::vector<sg_position> vertices(length);
 
 // Get the vertices for the geometry
-sg_cube_positions(5, 5, 1, vertices.data(), &vertices_length);
+sg_cube_positions(5, 5, 1, vertices.data(), &length);
 #+end_src
    
 * Feature List
@@ -52,6 +53,7 @@ sg_cube_positions(5, 5, 1, vertices.data(), &vertices_length);
 
 - [ ] Geometry:
   + [X] Indexed Plane
+  + [ ] Subdivided Plane (For Height Mapping)
   + [X] Indexed Cube
   + [X] Non-Indexed Cube
   + [ ] UV Sphere
@@ -60,7 +62,7 @@ sg_cube_positions(5, 5, 1, vertices.data(), &vertices_length);
   + [ ] Cylinder
   + [ ] Cone
   + [ ] Capsule
-- [ ] math.h Library Replacement:
 
+- [ ] math.h Library Replacement:
   + [X] Allows Disabling
   + [ ] Contains alternative math operations such as square-root
