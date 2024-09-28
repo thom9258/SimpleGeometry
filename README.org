@@ -1,0 +1,44 @@
+* Simple Geometry Generation for Rendering
+
+Simple Geometry [SG] is an ansi-c99 single-header framework for generating simple geometry.
+SG is able to generate vertices, indices, normals & texture coordinates for various rendering primitives.
+
+** Why c99
+
+The chosen way of implementating the library allows for maximum portability, and thereby usability of differernt platforms, rendering api's etc.
+SG has no external dependencies, and allows disabling dependencies on posix headers as'well, with minimal changes.
+
+** Maximum Portability Through Design
+ 
+SG does not make any assumptions.
+This philosophy shines through the API's design.
+The API is designed in the rather classical vector returning style, often found in other c API's. where in places such as when retrieving the generated geometry, it is up to the caller, to provide a memory area large enough to facilitate the returned data.
+In the case of the returned data size being unknown. one simply calls the same method, but with the output buffer as a nullptr.
+
+SG provides maximum transparency in what is happening.
+All SG functions that has some kind of state associated with its usage, returns a status, except in the case where failing is simply not possible.
+This gives the user maximum insight in the result of an operation, both upon success and failure states.
+   
+* Feature List
+
+- [ ] Fully-Featured Tests:
+  + [ ] Minimal Opengl Example
+
+- [X] Utilities:
+  + [X] Strided Block Copying for SOA Vertices Generation
+  + [X] Flat Normal Calculation from Non-Indexed Vertices
+
+- [ ] Geometry:
+  + [X] Indexed Plane
+  + [X] Indexed Cube
+  + [X] Non-Indexed Cube
+  + [ ] UV Sphere
+  + [ ] UV Sphere
+  + [ ] ICO Sphere
+  + [ ] Cylinder
+  + [ ] Cone
+  + [ ] Capsule
+- [ ] math.h Library Replacement:
+
+  + [X] Allows Disabling
+  + [ ] Contains alternative math operations such as square-root
