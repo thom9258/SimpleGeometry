@@ -23,6 +23,23 @@ In the case of the returned data size being unknown. one simply calls the same m
 SG provides maximum transparency in what is happening.
 All SG functions that has some kind of state associated with its usage, returns a status, except in the case where failing is simply not possible.
 This gives the user maximum insight in the result of an operation, both upon success and failure states.
+
+* Example: Generate the Floor for your Render
+
+SG is a c api, but works well in C++ too when using an container such as a std::vector.
+Please note that error checking has been omited for clarity.
+
+#+begin_src c++
+// Get the size of the vertices that will be returned (note the output data pointer is nullptr)
+unsigned int vertices_length;
+sg_cube_positions(5, 5, 1, nullptr, &vertices_length);
+
+// scale the buffer to the size of the return
+std::vector<sg_position> vertices(vertices_length);
+
+// Get the vertices for the geometry
+sg_cube_positions(5, 5, 1, vertices.data(), &vertices_length);
+#+end_src
    
 * Feature List
 
