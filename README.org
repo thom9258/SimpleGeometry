@@ -8,6 +8,11 @@ SG is able to generate vertices, indices, normals & texture coordinates for vari
 The chosen way of implementating the library allows for maximum portability, and thereby usability of differernt platforms, rendering api's etc.
 SG has no external dependencies, and allows disabling dependencies on posix headers as'well, with minimal changes.
 
+** Overall Goal
+   
+SG's overall goal and purpose is to provide simple rendering primitives, ready to use for rendering api's.
+Ideally, just as with stb_image.h being the centerpiese for image importing in rendering API's tutorials, new programmers should be able to just drop in simple_geometry.h and get started with rendering, with minimal friction.
+
 ** Maximum Portability Through Design
  
 SG does not make any assumptions.
