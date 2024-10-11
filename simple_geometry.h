@@ -38,27 +38,43 @@ extern "C" {
 #endif
 	
 #ifndef	SG_nullptr
-#  define SG_nullptr (void*)0
+#  ifdef __cplusplus
+#    define SG_nullptr nullptr
+#  else
+#    define SG_nullptr ((void*)0)
+#  endif
 #endif
 
 #ifndef	SG_true
-#  define SG_true 1
+#  ifdef __cplusplus
+#    define SG_true true
+#  else
+#    define SG_true 1
+#  endif
 #endif
 
 #ifndef	SG_false
-#  define SG_false 0 
+#  ifdef __cplusplus
+#    define SG_false false
+#  else
+#    define SG_false 0 
+#  endif
 #endif
 
+#ifndef	SG_size
+#  ifdef __cplusplus
+#    define SG_size size_t
+#  else
+#    define SG_size unsigned int
+#  endif
+#endif
+	
 #ifndef	SG_float
 #  define SG_float float
 #endif
 
 #ifndef	SG_bool
 #  define SG_bool char
-#endif
-	
-#ifndef	SG_size
-#  define SG_size unsigned int
 #endif
 	
 #ifndef	SG_indice
@@ -68,7 +84,7 @@ extern "C" {
 #define	SG_ARRAY_MEMSIZE(ARR) sizeof(ARR)
 #define	SG_ARRAY_LEN(ARR) (SG_ARRAY_MEMSIZE(ARR) / sizeof(ARR[0]))
 
-enum SG_status {
+enum sg_status {
 	SG_OK_RETURNED_BUFFER,
 	SG_OK_RETURNED_LEN,
 	SG_OK_COPIED_TO_DST,
@@ -89,6 +105,8 @@ struct sg_vec3f {
 	SG_float z;
 };
 	
+#define SG_VEC3F_EXPAND(VEC) (VEC.x), (VEC.y), (VEC.z)
+	
 struct sg_position {
 	SG_float x;
 	SG_float y;
@@ -106,6 +124,14 @@ struct sg_normal {
 	SG_float z;
 };
 	
+struct sg_material {
+	struct sg_vec3f ambient;
+	struct sg_vec3f diffuse;
+	struct sg_vec3f specular;
+	SG_float shininess;
+};
+
+
 /**
  * @brief Check if returned SG_STATUS indicates success.
  *
@@ -114,11 +140,18 @@ struct sg_normal {
  */
 SG_API_EXPORT
 SG_bool
-sg_success(SG_IN const enum SG_status status); 
+sg_success(SG_IN const enum sg_status status); 
 	
+/**
+ * @brief Check if returned SG_STATUS indicates success.
+ *
+ * A simplified summary of the return code, if ignoring any
+ * specific error/success code is wanted.
+ */
+
 SG_API_EXPORT
 const char*
-sg_status_string(SG_IN const enum SG_status status);
+sg_status_string(SG_IN const enum sg_status status);
 	
 /**
  * @brief Copy memory.
@@ -126,7 +159,7 @@ sg_status_string(SG_IN const enum SG_status status);
  * Copies 'n' bytes of memory from 'src' to 'dst'.
  */
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_memcpy(SG_IN const void* src,
 		  SG_IN const SG_size n,
 		  SG_OUT void* dst);
@@ -199,7 +232,7 @@ sg_memcpy(SG_IN const void* src,
  * previous strided copying operations. 
  */
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_strided_blockcopy(SG_IN  const SG_size src_block_size,
 					 SG_IN  const SG_size src_stride,
 					 SG_IN  const SG_size src_block_count,
@@ -242,7 +275,7 @@ sg_normal_from_vec3f(SG_IN const struct sg_vec3f v);
  * @brief Calculate flat normals for vertices.
  */
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_calculate_flat_normals(SG_IN  const struct sg_position* vertices,
 						  SG_IN  const SG_size vertices_len,
 						  SG_OUT struct sg_normal* normals);
@@ -281,7 +314,7 @@ sg_calculate_flat_normals(SG_IN  const struct sg_position* vertices,
  * @return a return code indicating the status of the usage.
  */
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_cube_positions(SG_IN  const SG_float width,
 				  SG_IN  const SG_float height,
 				  SG_IN  const SG_float depth,
@@ -315,7 +348,7 @@ sg_cube_positions(SG_IN  const SG_float width,
  * @return a return code indicating the status of the usage.
  */
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_cube_normals(SG_OUT struct sg_normal* dst,
 				SG_OUT SG_size* dstlen);
 	
@@ -346,7 +379,7 @@ sg_cube_normals(SG_OUT struct sg_normal* dst,
  * @return a return code indicating the status of the usage.
  */
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_cube_texcoords(SG_OUT struct sg_texcoord* dst,
 				  SG_OUT SG_size* dstlen);
 
@@ -367,24 +400,24 @@ sg_cube_texcoords(SG_OUT struct sg_texcoord* dst,
  * @return a return code indicating the status of the use.
  */
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_plane_positions(SG_IN  const SG_float width,
 				   SG_IN  const SG_float height,
 				   SG_OUT struct sg_position* dst,
 				   SG_OUT SG_size* dstlen);
 
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_plane_indices(SG_OUT SG_indice* dst,
 				 SG_OUT SG_size* dstlen);
 
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_plane_texcoords(SG_OUT struct sg_texcoord* dst,
 				   SG_OUT SG_size* dstlen);
 
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_indexed_cube_positions(SG_IN  const SG_float width,
 						  SG_IN  const SG_float height,
 						  SG_IN  const SG_float depth,
@@ -392,17 +425,17 @@ sg_indexed_cube_positions(SG_IN  const SG_float width,
 						  SG_OUT SG_size* dstlen);
 
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_indexed_cube_indices(SG_OUT SG_indice* dst,
 						SG_OUT SG_size* dstlen);
 
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_indexed_cube_texcoords(SG_OUT struct sg_texcoord* dst,
 						  SG_OUT SG_size* dstlen);
 	
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_sphere_positions(SG_IN  const SG_float width,
 					SG_IN  const SG_float height,
 					SG_IN  const SG_float depth,
@@ -410,20 +443,43 @@ sg_sphere_positions(SG_IN  const SG_float width,
 					SG_OUT SG_size* dstlen);
 
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_sphere_indices(SG_OUT SG_indice* dst,
 				  SG_OUT SG_size* dstlen);
 
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_sphere_texcoords(SG_OUT struct sg_texcoord* dst,
 					SG_OUT SG_size* dstlen);
 
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_sphere_normals(SG_OUT struct sg_normal* dst,
 				  SG_OUT SG_size* dstlen);
 
+/**
+ * @brief Get Material properties for 'gold'.
+ */
+SG_API_EXPORT
+struct sg_material
+sg_material_gold(); 
+
+/**
+ * @brief Get Material properties for 'obsidian'.
+ */
+SG_API_EXPORT
+struct sg_material
+sg_material_obsidian(); 
+	
+/**
+ * @brief Get Material properties for 'default flat white'.
+ * This color emulates the default white color material for
+ * for primitive objects used in common editors and engines.
+ */
+SG_API_EXPORT
+struct sg_material
+sg_material_default_flat_white();
+	
 
 /** ***********************************************************
  * Implementation
@@ -431,7 +487,7 @@ sg_sphere_normals(SG_OUT struct sg_normal* dst,
 #ifdef SIMPLE_GEOMETRY_IMPLEMENTATION
 
 SG_bool
-sg_success(SG_IN const enum SG_status status)
+sg_success(SG_IN const enum sg_status status)
 {
 	switch (status) {
 	case SG_OK_RETURNED_BUFFER:
@@ -444,7 +500,7 @@ sg_success(SG_IN const enum SG_status status)
 }
 	
 const char*
-sg_status_string(SG_IN const enum SG_status status)
+sg_status_string(SG_IN const enum sg_status status)
 {
 	switch (status) {
 	case SG_OK_RETURNED_BUFFER:                return "SG_OK_RETURNED_BUFFER"; 
@@ -461,7 +517,7 @@ sg_status_string(SG_IN const enum SG_status status)
 	return "SG_UNKNOWN_STATUS";
 }
 
-enum SG_status
+enum sg_status
 sg_memcpy(SG_IN  const void* src,
 		  SG_IN  const SG_size n,
 		  SG_OUT void* dst)
@@ -477,7 +533,7 @@ sg_memcpy(SG_IN  const void* src,
 	return SG_OK_COPIED_TO_DST;
 }
 
-enum SG_status
+enum sg_status
 sg_strided_blockcopy(SG_IN  const SG_size src_block_size,
 					 SG_IN  const SG_size src_stride,
 					 SG_IN  const SG_size src_block_count,
@@ -488,7 +544,7 @@ sg_strided_blockcopy(SG_IN  const SG_size src_block_size,
 	SG_size i;
 	char* currsrc;
 	char* currdst;
-	enum SG_status copystatus;
+	enum sg_status copystatus;
 	if (src == SG_nullptr || dst == SG_nullptr)
 		return SG_ERR_NULLPTR_INPUT;
 	if (dst_stride < 1 || src_block_size < 1 || src_block_count < 1)
@@ -563,10 +619,10 @@ sg_normal_from_vec3f(const struct sg_vec3f v)
 	return (struct sg_normal) {v.x, v.y, v.z};
 }
 
-enum SG_status
-sg_calculate_flat_normals(SG_IN  const struct sg_position* vertices,
-						  SG_IN  const SG_size vertices_len,
-						  SG_OUT struct sg_normal* normals)
+struct sg_normal
+sg_face_normal(SG_IN struct sg_position p1,
+			   SG_IN struct sg_position p2,
+			   SG_IN struct sg_position p3)
 {
 	struct sg_vec3f a;
 	struct sg_vec3f b;
@@ -574,6 +630,25 @@ sg_calculate_flat_normals(SG_IN  const struct sg_position* vertices,
 	struct sg_vec3f ba;
 	struct sg_vec3f ca;
 	struct sg_vec3f cross;
+
+	/* Calculate the face normal using the formula:
+	 * n = normalize(cross(b-a, c-a)) 
+	 */
+	a = sg_vec3f_from_position(p1);
+	b = sg_vec3f_from_position(p2);
+	c = sg_vec3f_from_position(p3);
+
+	ba = sg_vec3f_subtract(b, a); 
+	ca = sg_vec3f_subtract(c, a); 
+	cross = sg_vec3f_cross(ba, ca);
+	return sg_normal_from_vec3f(sg_vec3f_normalize(cross));
+}
+
+enum sg_status
+sg_calculate_flat_normals(SG_IN  const struct sg_position* vertices,
+						  SG_IN  const SG_size vertices_len,
+						  SG_OUT struct sg_normal* normals)
+{
 	struct sg_normal normal;
 	SG_size i;
 
@@ -582,27 +657,20 @@ sg_calculate_flat_normals(SG_IN  const struct sg_position* vertices,
 	if ((vertices_len % 3) != 0)
 		return SG_ERR_VERTICES_NOT_DIVISIBLE_BY_3;
 
-	/* Calculate the normal using the formula:
-	 * n = normalize(cross(b-a, c-a)) 
-	 */
 	for (i = 0; i < vertices_len; i += 3) {
-		a = sg_vec3f_from_position(vertices[i]);
-		b = sg_vec3f_from_position(vertices[i+1]);
-		c = sg_vec3f_from_position(vertices[i+2]);
+		normal = sg_face_normal(vertices[i],
+								vertices[i+1],
+								vertices[i+2]);
 		
-		ba = sg_vec3f_subtract(b, a); 
-		ca = sg_vec3f_subtract(c, a); 
-		cross = sg_vec3f_cross(ba, ca);
-		normal = sg_normal_from_vec3f(sg_vec3f_normalize(cross));
-
 		normals[i]   = normal;
 		normals[i+1] = normal;
 		normals[i+2] = normal;
 	}
+
 	return SG_OK_RETURNED_BUFFER;
 }
 	
-enum SG_status
+enum sg_status
 sg_plane_positions(SG_IN  const SG_float width,
 				   SG_IN  const SG_float height,
 				   SG_OUT struct sg_position* dst,
@@ -627,7 +695,7 @@ sg_plane_positions(SG_IN  const SG_float width,
 					 dst);
 }
 	
-enum SG_status
+enum sg_status
 sg_plane_indices(SG_OUT SG_indice* dst,
 				 SG_OUT SG_size* dstlen)
 {
@@ -647,7 +715,7 @@ sg_plane_indices(SG_OUT SG_indice* dst,
 					 dst);
 }
 	
-enum SG_status
+enum sg_status
 sg_plane_texcoords(SG_OUT struct sg_texcoord* dst,
 				   SG_OUT SG_size* dstlen)
 {
@@ -673,7 +741,7 @@ sg_plane_texcoords(SG_OUT struct sg_texcoord* dst,
 	return SG_OK_RETURNED_BUFFER;
 }
 
-enum SG_status
+enum sg_status
 sg_indexed_cube_positions(SG_IN  const SG_float width,
 						  SG_IN  const SG_float height,
 						  SG_IN  const SG_float depth,
@@ -721,7 +789,7 @@ sg_indexed_cube_positions(SG_IN  const SG_float width,
 					 dst);
 }
 	
-enum SG_status
+enum sg_status
 sg_indexed_cube_indices(SG_OUT SG_indice* dst,
 						SG_OUT SG_size* dstlen)
 {
@@ -758,7 +826,7 @@ sg_indexed_cube_indices(SG_OUT SG_indice* dst,
 	return SG_OK_RETURNED_BUFFER;
 }
 	
-enum SG_status
+enum sg_status
 sg_indexed_cube_texcoords(SG_OUT struct sg_texcoord* dst,
 						  SG_OUT SG_size* dstlen)
 {
@@ -807,7 +875,7 @@ sg_indexed_cube_texcoords(SG_OUT struct sg_texcoord* dst,
 }
 
 SG_API_EXPORT
-enum SG_status
+enum sg_status
 sg_cube_positions(SG_IN  const SG_float width,
 				  SG_IN  const SG_float height,
 				  SG_IN  const SG_float depth,
@@ -871,7 +939,7 @@ sg_cube_positions(SG_IN  const SG_float width,
 	return SG_OK_RETURNED_BUFFER;
 }
 	
-enum SG_status
+enum sg_status
 sg_cube_normals(SG_OUT struct sg_normal* dst,
 				SG_OUT SG_size* dstlen)
 {
@@ -935,7 +1003,7 @@ sg_cube_normals(SG_OUT struct sg_normal* dst,
 	return SG_OK_RETURNED_BUFFER;
 }
 
-enum SG_status
+enum sg_status
 sg_cube_texcoords(SG_OUT struct sg_texcoord* dst,
 				  SG_OUT SG_size* dstlen)
 {
@@ -998,7 +1066,7 @@ sg_cube_texcoords(SG_OUT struct sg_texcoord* dst,
 	return SG_OK_RETURNED_BUFFER;
 }
 
-enum SG_status
+enum sg_status
 sg_sphere_positions(SG_IN  const SG_float width,
 					SG_IN  const SG_float height,
 					SG_IN  const SG_float depth,
@@ -1014,7 +1082,7 @@ sg_sphere_positions(SG_IN  const SG_float width,
 	return SG_ERR_NOT_IMPLEMENTED_YET;
 }
 
-enum SG_status
+enum sg_status
 sg_sphere_indices(SG_OUT SG_indice* dst,
 				  SG_OUT SG_size* dstlen)
 {
@@ -1024,7 +1092,7 @@ sg_sphere_indices(SG_OUT SG_indice* dst,
 	return SG_ERR_NOT_IMPLEMENTED_YET;
 }
 
-enum SG_status
+enum sg_status
 sg_sphere_texcoords(SG_OUT struct sg_texcoord* dst,
 					SG_OUT SG_size* dstlen)
 {
@@ -1034,7 +1102,7 @@ sg_sphere_texcoords(SG_OUT struct sg_texcoord* dst,
 	return SG_ERR_NOT_IMPLEMENTED_YET;
 }
 
-enum SG_status
+enum sg_status
 sg_sphere_normals(SG_OUT struct sg_normal* dst,
 				  SG_OUT SG_size* dstlen)
 {
@@ -1044,7 +1112,38 @@ sg_sphere_normals(SG_OUT struct sg_normal* dst,
 	return SG_ERR_NOT_IMPLEMENTED_YET;
 }
 
+struct sg_material
+sg_material_gold()
+{
+	struct sg_material mat;
+	mat.ambient  = (struct sg_vec3f) {0.24725f, 0.1995f, 0.0745f};
+	mat.diffuse  = (struct sg_vec3f) {0.75164f, 0.60648f, 0.22648f};
+	mat.specular = (struct sg_vec3f) {0.628281f, 0.555802f, 0.366065f};
+	mat.shininess = 0.4f;
+	return mat;
+}
 
+struct sg_material
+sg_material_obsidian()
+{
+	struct sg_material mat;
+	mat.ambient  = (struct sg_vec3f) {0.05375f, 0.05f, 0.06625f};
+	mat.diffuse  = (struct sg_vec3f) {0.18275f, 0.17f, 0.22525f};
+	mat.specular = (struct sg_vec3f) {0.332741f, 0.328634f, 0.346435f};
+	mat.shininess = 0.3f;
+	return mat;
+}
+	
+struct sg_material
+sg_material_default_flat_white()
+{
+	struct sg_material mat;
+	mat.ambient  = (struct sg_vec3f) {0.0f, 0.0f, 0.0f};
+	mat.diffuse  = (struct sg_vec3f) {0.95f, 0.95f, 0.95f};
+	mat.specular = (struct sg_vec3f) {0.7f, 0.7f, 0.7f};
+	mat.shininess = 0.25f;
+	return mat;
+}
 	
 #endif // SIMPLE_GEOMETRY_IMPLEMENTATION
 #ifdef __cplusplus

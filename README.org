@@ -6,42 +6,124 @@ SG is able to generate vertices, indices, normals & texture coordinates for vari
 ** Why c99
 
 The chosen way of implementating the library allows for maximum portability, and thereby usability of differernt platforms, rendering api's etc.
-SG has no external dependencies, and allows disabling dependencies on posix headers as'well, with minimal changes.
+SG has no external dependencies, and even allows disabling posix header dependencies as-well.
 
 ** Overall Goal
    
-SG's overall goal and purpose is to provide simple rendering primitives, ready to use for rendering api's.
-Ideally, just as with stb_image.h being the centerpiese for image importing in rendering API's tutorials, new programmers should be able to just drop in simple_geometry.h and get started with rendering, with minimal friction.
+SG's overall goal and purpose is to provide simple rendering primitives, ready to use and integrate into rendering engines without being conserned about the chosen rendering API.
+The library aims to be like "stb_image.h", the centerpiese for image importing in rendering tutorials.
+With this library, new programmers should be able to just drop in "simple_geometry.h" and get started with primitive rendering with minimal friction.
 
-** Maximum Portability Through Design
- 
-SG does not make any assumptions.
-This philosophy shines through the API's design.
-The API is designed in the rather classical vector returning style, often found in other c API's. where in places such as when retrieving the generated geometry, it is up to the caller, to provide a memory area large enough to facilitate the returned data.
-In the case of the returned data size being unknown. one simply calls the same method, but with the output buffer as a nullptr.
+* C++ Example: Generate the Floor for your Render
 
-SG provides maximum transparency in what is happening.
-All SG functions that has some kind of state associated with its usage, returns a status, except in the case where failing is simply not possible.
-This gives the user maximum insight in the result of an operation, both upon success and failure states.
-
-* Example: Generate the Floor for your Render
-
-SG is a c api, but works well in C++ too when using an container such as a std::vector.
+SG is an ansi-c99 api, but designed to work well with C++ such as with the std::vector container.
 Please note that error checking has been omited for clarity.
 
 #+begin_src c++
 // Get the size of the vertices that will be returned
-// note the output data pointer is 'nullptr' to specify we want the length
+// @note because the output data pointer is 'nullptr', we explicitly
+//       ask to retrieve the length of the needed buffer.
+//       Remember to provide valid geometry configuration, as this
+//       *can* have an influence in the returned length.
 unsigned int length;
-sg_cube_positions(5, 5, 1, nullptr, &length);
+sg_cube_positions(5, 5, 0.2f, nullptr, &length);
 
 // scale the buffer to the size of the return
 std::vector<sg_position> vertices(length);
 
 // Get the vertices for the geometry
-sg_cube_positions(5, 5, 1, vertices.data(), &length);
+// @note because the output data pointer points to valid memory,
+//       the actual vertex data is calculated and outputted to
+//       the provided buffer. In this case the length pointer is
+//       not needed.
+sg_cube_positions(5, 5, 0.2f, vertices.data(), &length);
 #+end_src
-   
+
+* Maximum Portability Through Design
+ 
+SG does not make any assumptions.
+This philosophy shines through the API's design.
+The API is designed in the rather classical vector returning style, often found in other c API's such as Vulkan. 
+In places when a buffer of generated geometry is returned, it is up to the caller to provide a memory area large enough to facilitate the returned data.
+In the case of the returned data size being unknown. one simply calls the same method, but with the output buffer as a nullptr.
+Examples of this can be seen throughout the library:
+
+#+begin_src c++
+SG_API_EXPORT
+enum SG_status
+sg_plane_positions(SG_IN  const SG_float width,
+				   SG_IN  const SG_float height,
+				   SG_OUT struct sg_position* dst,
+				   SG_OUT SG_size* dstlen);
+#+end_src
+Ensure to read the documentation for the individual signatures to understand how they are used.
+
+** Transparency & Error Reporting
+
+SG provides maximum transparency in what is happening.
+All SG functions that has some kind of state associated with its usage, returns a status, except in the case where failing is simply not possible.
+This gives the user maximum insight in the result of an operation, both upon success and failure states.
+
+Functions that by definition cannot fail is considered the only exception to the above rule however:
+#+begin_src c++
+SG_API_EXPORT
+struct sg_material
+sg_material_gold(); 
+#+end_src
+In this case no error checking is needed and the result is directly returned.
+
+A function that requires error management can be seen here:
+#+begin_src c++
+SG_API_EXPORT
+enum SG_status
+sg_indexed_cube_indices(SG_OUT SG_indice* dst,
+						SG_OUT SG_size* dstlen);
+#+end_src
+
+In this case the retuned SG_status enum is encouraged to be checked.
+
+*** Checking Errors
+
+Checking for errors is essencially as simple as calling
+#+begin_src c++
+SG_API_EXPORT
+SG_bool
+sg_success(SG_IN const enum SG_status status); 
+#+end_src
+On the returned status code from any function that can fail.	
+This is fine for most cases, but take note that a function can have different success
+cases that can be relevant to check:
+
+#+begin_src c++
+unsigned int length;
+enum SG_status status = sg_cube_positions(5, 5, 0.2f, nullptr, &length);
+if (!sg_success(status)) {
+    // Error handling
+}
+#+end_src
+In this example we can intuitively see that the function returns success because
+the length of the input buffer is returned.
+We do however not check for this specific success case, and we might require other
+success cases to be considered error cases for this specific call. 
+Therefore it can be beneficial to instead check on the specific expected returned
+status:
+#+begin_src c++
+if (status != SG_OK_RETURNED_LEN) {
+    // Error handling
+}
+#+end_src
+
+From this we can also be vocal about what was returned and use the stringification
+function to convert all known status conditions into something printable:
+#+begin_src c++
+unsigned int length;
+enum SG_status status = sg_cube_positions(5, 5, 0.2f, nullptr, &length);
+if (status != SG_OK_RETURNED_LEN) {
+    printf("SG error: %s\n", sg_status_string(status));
+}
+printf("SG success: %s\n", sg_status_string(status));
+#+end_src
+
 * Feature List
 
 - [ ] Fully-Featured Tests:
@@ -62,6 +144,9 @@ sg_cube_positions(5, 5, 1, vertices.data(), &length);
   + [ ] Cylinder
   + [ ] Cone
   + [ ] Capsule
+
+- [ ] Simple Flat Materials:
+  + [.] Ones found at: http://devernay.free.fr/cours/opengl/materials.html
 
 - [ ] math.h Library Replacement:
   + [X] Allows Disabling

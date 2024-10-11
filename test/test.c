@@ -12,7 +12,7 @@ void test_data_copying()
 {
 	char src[] = "this is my ascii string";
 	char dst[SG_ARRAY_LEN(src)] = {' '};
-	enum SG_status status = SG_OK_RETURNED_BUFFER;
+	enum sg_status status = SG_OK_RETURNED_BUFFER;
 
 	status = sg_memcpy(SG_nullptr, 27, dst);
 	assert(!sg_success(status) && "invalid src was accepted");
@@ -31,7 +31,7 @@ void test_strided_data_copying_errs()
 {
 	char src1[] = "12121212";
 	char dst[] = "                       ";
-	enum SG_status status = SG_OK_RETURNED_BUFFER;
+	enum sg_status status = SG_OK_RETURNED_BUFFER;
 
 	status = sg_strided_blockcopy(0, 2, 4, src1, 5, dst);
 	assert(!sg_success(status) && "was allowed to pass invalid srcblksize");
@@ -50,7 +50,7 @@ void test_strided_data_copying()
 	char src1[] = "12121212";
 	char src2[] = "345";
 	char dst[] = "                       ";
-	enum SG_status status = SG_OK_RETURNED_BUFFER;
+	enum sg_status status = SG_OK_RETURNED_BUFFER;
 
 	status = sg_strided_blockcopy(2, 2, 4, src1, 5, dst);
 	assert(sg_success(status) && "could not copy buffer");
@@ -64,7 +64,7 @@ void test_strided_data_copying()
 void get_plane_positions()
 {
 	unsigned int size = 0;
-	enum SG_status status = SG_OK_RETURNED_BUFFER;
+	enum sg_status status = SG_OK_RETURNED_BUFFER;
 	struct sg_position* pos = NULL;
 	unsigned int i;
 
@@ -92,7 +92,7 @@ void get_plane_positions()
 void get_cube_positions()
 {
 	unsigned int size = 0;
-	enum SG_status status = SG_OK_RETURNED_BUFFER;
+	enum sg_status status = SG_OK_RETURNED_BUFFER;
 	struct sg_position* pos = NULL;
 	unsigned int i;
 
