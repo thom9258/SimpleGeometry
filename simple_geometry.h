@@ -105,7 +105,7 @@ struct sg_vec3f {
 	SG_float z;
 };
 	
-#define SG_VEC3F_EXPAND(VEC) (VEC.x), (VEC.y), (VEC.z)
+#define SG_EXPAND_XYZ(T) (T.x), (T.y), (T.z)
 	
 struct sg_position {
 	SG_float x;
@@ -130,7 +130,6 @@ struct sg_material {
 	struct sg_vec3f specular;
 	SG_float shininess;
 };
-
 
 /**
  * @brief Check if returned SG_STATUS indicates success.
@@ -321,6 +320,7 @@ sg_cube_positions(SG_IN  const SG_float width,
 				  SG_OUT struct sg_position* dst,
 				  SG_OUT SG_size* dstlen);
 
+
 /**
  * @brief Get Cube Normals.
  *
@@ -352,6 +352,7 @@ enum sg_status
 sg_cube_normals(SG_OUT struct sg_normal* dst,
 				SG_OUT SG_size* dstlen);
 	
+
 /**
  * @brief Get Cube Texture Coordinates.
  *
@@ -406,34 +407,13 @@ sg_plane_positions(SG_IN  const SG_float width,
 				   SG_OUT struct sg_position* dst,
 				   SG_OUT SG_size* dstlen);
 
-SG_API_EXPORT
-enum sg_status
-sg_plane_indices(SG_OUT SG_indice* dst,
-				 SG_OUT SG_size* dstlen);
 
 SG_API_EXPORT
 enum sg_status
 sg_plane_texcoords(SG_OUT struct sg_texcoord* dst,
 				   SG_OUT SG_size* dstlen);
 
-SG_API_EXPORT
-enum sg_status
-sg_indexed_cube_positions(SG_IN  const SG_float width,
-						  SG_IN  const SG_float height,
-						  SG_IN  const SG_float depth,
-						  SG_OUT struct sg_position* dst,
-						  SG_OUT SG_size* dstlen);
 
-SG_API_EXPORT
-enum sg_status
-sg_indexed_cube_indices(SG_OUT SG_indice* dst,
-						SG_OUT SG_size* dstlen);
-
-SG_API_EXPORT
-enum sg_status
-sg_indexed_cube_texcoords(SG_OUT struct sg_texcoord* dst,
-						  SG_OUT SG_size* dstlen);
-	
 SG_API_EXPORT
 enum sg_status
 sg_sphere_positions(SG_IN  const SG_float width,
@@ -680,7 +660,10 @@ sg_plane_positions(SG_IN  const SG_float width,
         {-width, -height, 0.0f},
         { width, -height, 0.0f},
         { width,  height, 0.0f},
-        {-width,  height, 0.0f}
+		
+        { width,  height, 0.0f},
+        {-width,  height, 0.0f},
+        {-width, -height, 0.0f}
     };
 
 	if (dstlen == SG_nullptr)
@@ -694,27 +677,7 @@ sg_plane_positions(SG_IN  const SG_float width,
 					 SG_ARRAY_MEMSIZE(positions),
 					 dst);
 }
-	
-enum sg_status
-sg_plane_indices(SG_OUT SG_indice* dst,
-				 SG_OUT SG_size* dstlen)
-{
-	const SG_indice indices[] = {
-		0, 1, 2,
-		2, 3, 0
-	};
-	if (dstlen == SG_nullptr)
-		return SG_ERR_DSTLEN_NOT_PROVIDED;
 
-	*dstlen = SG_ARRAY_LEN(indices);
-	if (dst == SG_nullptr)
-		return SG_OK_RETURNED_LEN;
-	
-	return sg_memcpy(indices,
-					 SG_ARRAY_MEMSIZE(indices),
-					 dst);
-}
-	
 enum sg_status
 sg_plane_texcoords(SG_OUT struct sg_texcoord* dst,
 				   SG_OUT SG_size* dstlen)
@@ -723,140 +686,10 @@ sg_plane_texcoords(SG_OUT struct sg_texcoord* dst,
 		{1.0f, 0.0f},
 		{0.0f, 0.0f},
 		{0.0f, 1.0f},
-		{1.0f, 1.0f}
-	};
-	const SG_size outlen = SG_ARRAY_LEN(out);
-	SG_size i;
-		if (dstlen == SG_nullptr)
-		return SG_ERR_DSTLEN_NOT_PROVIDED;
 
-	*dstlen = outlen;
-	if (dst == SG_nullptr)
-		return SG_OK_RETURNED_LEN;
-	
-	for (i = 0; i < outlen; ++i) {
-		dst[i] = out[i];
-	}
-
-	return SG_OK_RETURNED_BUFFER;
-}
-
-enum sg_status
-sg_indexed_cube_positions(SG_IN  const SG_float width,
-						  SG_IN  const SG_float height,
-						  SG_IN  const SG_float depth,
-						  SG_OUT struct sg_position* dst,
-						  SG_OUT SG_size* dstlen)
-{
-	const struct sg_position positions[] = {
-		{-width, -height, -depth},  // A 0
-		{ width, -height, -depth},   // B 1
-		{ width,  height, -depth},   // C 2
-		{-width,  height, -depth},  // D 3
-		{-width, -height,  depth},  // E 4
-		{ width, -height,  depth},   // F 5
-		{ width,  height,  depth},   // G 6
-		{-width,  height,  depth},  // H 7
-
-		{-width,  height, -depth},  // D 8
-		{-width, -height, -depth},  // A 9
-		{-width, -height,  depth},  // E 10
-		{-width,  height,  depth},  // H 11
-		{ width, -height, -depth},   // B 12
-		{ width,  height, -depth},   // C 13
-		{ width,  height,  depth},   // G 14
-		{ width, -height,  depth},   // F 15
-
-		{-width, -height, -depth},  // A 16
-		{ width, -height, -depth},   // B 17
-		{ width, -height,  depth},   // F 18
-		{-width, -height,  depth},  // E 19
-		{ width,  height, -depth},   // C 20
-		{-width,  height, -depth},  // D 21
-		{-width,  height,  depth},  // H 22
-		{ width,  height,  depth},   // G 23
-    };
-
-	if (dstlen == SG_nullptr)
-		return SG_ERR_DSTLEN_NOT_PROVIDED;
-
-	*dstlen = SG_ARRAY_LEN(positions);
-	if (dst == SG_nullptr)
-		return SG_OK_RETURNED_LEN;
-	
-	return sg_memcpy(positions,
-					 SG_ARRAY_MEMSIZE(positions),
-					 dst);
-}
-	
-enum sg_status
-sg_indexed_cube_indices(SG_OUT SG_indice* dst,
-						SG_OUT SG_size* dstlen)
-{
-	const SG_indice out[] = {
-        // front and back
-        0, 3, 2,
-        2, 1, 0,
-        4, 5, 6,
-        6, 7 ,4,
-        // left and right
-        11, 8, 9,
-        9, 10, 11,
-        12, 13, 14,
-        14, 15, 12,
-        // bottom and top
-        16, 17, 18,
-        18, 19, 16,
-        20, 21, 22,
-        22, 23, 20
-	};
-	const SG_size outlen = SG_ARRAY_LEN(out);
-	SG_size i;
-		if (dstlen == SG_nullptr)
-		return SG_ERR_DSTLEN_NOT_PROVIDED;
-
-	*dstlen = outlen;
-	if (dst == SG_nullptr)
-		return SG_OK_RETURNED_LEN;
-	
-	for (i = 0; i < outlen; ++i) {
-		dst[i] = out[i];
-	}
-
-	return SG_OK_RETURNED_BUFFER;
-}
-	
-enum sg_status
-sg_indexed_cube_texcoords(SG_OUT struct sg_texcoord* dst,
-						  SG_OUT SG_size* dstlen)
-{
-	const struct sg_texcoord out[] = {
-		{0.0f, 0.0f},
-		{1.0f, 0.0f},
-		{1.0f, 1.0f},
 		{0.0f, 1.0f},
-		{0.0f, 0.0f},
-		{1.0f, 0.0f},    
 		{1.0f, 1.0f},
-		{0.0f, 1.0f},
-		
-		{0.0f, 0.0f},
 		{1.0f, 0.0f},
-		{1.0f, 1.0f},
-		{0.0f, 1.0f},
-		{0.0f, 0.0f},
-		{1.0f, 0.0f},
-		{1.0f, 1.0f},
-		{0.0f, 1.0f},
-		
-		{0.0f, 0.0f},
-		{1.0f, 0.0f},
-		{1.0f, 1.0f},
-		{0.0f, 1.0f},
-		{0.0f, 0.0f},
-		{1.0f, 0.0f},
-		{1.0f, 1.0f},
-		{0.0f, 1.0f}
 	};
 	const SG_size outlen = SG_ARRAY_LEN(out);
 	SG_size i;
