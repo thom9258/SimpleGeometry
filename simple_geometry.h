@@ -11,17 +11,25 @@ extern "C" {
 #  define SG_API_EXPORT
 #endif
 	
-#ifndef	SIMPLE_GEOMETRY_DONT_INCLUDE_MATH_H
-#  include <math.h>
-#  define SG_SQUARE_ROOT(D) sqrt(D)
-#endif
-	
 #ifndef	SIMPLE_GEOMETRY_DONT_INCLUDE_ASSERT_H
 #  include <assert.h>
 #  ifndef SG_ASSERT_NOT_IMPLEMENTED
 #    define SG_ASSERT_NOT_IMPLEMENTED(NAMESTR) assert(1 && "FUNCTION [" NAMESTR "] HAS NOT BEEN IMPLEMENTED YET!")
 #  endif
 #endif
+
+#ifndef	SIMPLE_GEOMETRY_DONT_INCLUDE_MATH_H
+#  include <math.h>
+#  define SG_SQUARE_ROOT(V) sqrt(V)
+#  define SG_COS(V) cos(V)
+#  define SG_SIN(V) sin(V)
+#endif
+	
+#ifndef SG_PI
+#  define SG_PI 3.1415926535897932384626433832795f
+#endif	
+
+#define SG_2PI (2.0f * SG_PI)
 
 #ifndef	SG_UNREFERENCED
 #  define SG_UNREFERENCED(VAR) (void)(VAR)
@@ -74,7 +82,11 @@ extern "C" {
 #endif
 
 #ifndef	SG_bool
-#  define SG_bool char
+#  ifdef __cplusplus
+#    define SG_bool bool
+#  else
+#    define SG_bool char
+#  endif
 #endif
 	
 #ifndef	SG_indice
@@ -279,110 +291,6 @@ sg_calculate_flat_normals(SG_IN  const struct sg_position* vertices,
 						  SG_IN  const SG_size vertices_len,
 						  SG_OUT struct sg_normal* normals);
 
-/**
- * @brief Get Cube Position Vertices.
- *
- * @param width   The specified width of the returned cube.
- * @param height  The specified height of the returned cube.
- * @param depth   The specified depth of the returned cube.
- * @param dst     Pointer to the output position buffer to fill.
- * @param dstlen  Pointer to the output minimim length of the 'dst' buffer
- *                to return to.
- *
- * The returned cube vertices are not indexed, in order to be able
- * to apply flat shading using the normals that can be aquried from
- * calling sg_cube_normals().
- * The function is structured to return generated data to a user
- * provided buffer.
- * The user is adviced to call this function using both call signatures:
- *
- * Call Signature 1:
- *   To get the length of the memory buffer needed to return data to,
- *   call this function with 'dst' set to SG_nullptr.
- *   The specified 'width', 'height' & 'depth' is ignored.
- *
- * Call Signature 2:
- *   To get the positions, provide a buffer of *at-least* the
- *   returned 'dstlen' as is retrieved when using call signature 1.
- *   the provided 'width', 'height' & 'depth' is used to modify the
- *   size of the returned cube.
- *
- * @see sg_cube_normals()
- * @see struct sg_position
- *
- * @return a return code indicating the status of the usage.
- */
-SG_API_EXPORT
-enum sg_status
-sg_cube_positions(SG_IN  const SG_float width,
-				  SG_IN  const SG_float height,
-				  SG_IN  const SG_float depth,
-				  SG_OUT struct sg_position* dst,
-				  SG_OUT SG_size* dstlen);
-
-
-/**
- * @brief Get Cube Normals.
- *
- * @param dst     Pointer to the output buffer to fill.
- * @param dstlen  Pointer to the output minimim length of the 'dst' buffer
- *                to return to.
- *
- * The returned cube normals match the gotten vertices from
- * calling sg_cube_positions().
- * The function is structured to return generated data to a user
- * provided buffer. 
- * The user is adviced to call this function using both call signatures:
- *
- * Call Signature 1:
- *   To get the length of the memory buffer needed to return data to,
- *   call this function with 'dst' set to SG_nullptr.
- *
- * Call Signature 2:
- *   To get the normals, provide a buffer of *at-least* the
- *   returned 'dstlen' as is retrieved when using call signature 1.
- *
- * @see sg_cube_positions()
- * @see struct sg_normal
- *
- * @return a return code indicating the status of the usage.
- */
-SG_API_EXPORT
-enum sg_status
-sg_cube_normals(SG_OUT struct sg_normal* dst,
-				SG_OUT SG_size* dstlen);
-	
-
-/**
- * @brief Get Cube Texture Coordinates.
- *
- * @param dst     Pointer to the output buffer to fill.
- * @param dstlen  Pointer to the output minimim length of the 'dst' buffer
- *                to return to.
- *
- * The returned cube texcoords match the gotten vertices from
- * calling sg_cube_positions().
- * The function is structured to return generated data to a user
- * provided buffer. 
- * The user is adviced to call this function using both call signatures:
- *
- * Call Signature 1:
- *   To get the length of the memory buffer needed to return data to,
- *   call this function with 'dst' set to SG_nullptr.
- *
- * Call Signature 2:
- *   To get the normals, provide a buffer of *at-least* the
- *   returned 'dstlen' as is retrieved when using call signature 1.
- *
- * @see sg_cube_positions()
- * @see struct sg_texcoord
- *
- * @return a return code indicating the status of the usage.
- */
-SG_API_EXPORT
-enum sg_status
-sg_cube_texcoords(SG_OUT struct sg_texcoord* dst,
-				  SG_OUT SG_size* dstlen);
 
 /**
  * @brief Get Plane Position Vertices.
@@ -412,30 +320,114 @@ SG_API_EXPORT
 enum sg_status
 sg_plane_texcoords(SG_OUT struct sg_texcoord* dst,
 				   SG_OUT SG_size* dstlen);
-
-
+	
 SG_API_EXPORT
 enum sg_status
-sg_sphere_positions(SG_IN  const SG_float width,
-					SG_IN  const SG_float height,
-					SG_IN  const SG_float depth,
-					SG_OUT struct sg_position* dst,
-					SG_OUT SG_size* dstlen);
-
+sg_plane(SG_IN  const SG_float width,
+		 SG_IN  const SG_float height,
+		 SG_OUT SG_size* length,
+		 SG_OUT struct sg_position* positions,
+		 SG_OUT struct sg_texcoord* texcoords);
+	
+/**
+ * @brief Get Cube Position Vertices.
+ *
+ * @param width      Width of the returned cube.
+ * @param height     Height of the returned cube.
+ * @param depth      Depth of the returned cube.
+ * @param length     Pointer to the output minimim length of 
+ *                   'positions', 'normals' & 'texcoords' buffers.
+ * @param positions  Pointer to the output position buffer to fill.
+ * @param normals    Pointer to the output normal buffer to fill.
+ * @param texcoords  Pointer to the output texcoord buffer to fill.
+ *
+ * Call Signature 1:
+ *   To get the minimum length of the output buffers.
+ *   call this function with 'positions', 'normals' & 'texcoords'
+ *   buffers set to 'SG_nullptr'.
+ *
+ * Call Signature 2:
+ *   To get 'positions', 'normals' & 'texcoords', provide buffers of 
+ *   *at-least* the returned 'dstlen' as is retrieved when using
+ *   call signature 1.
+ *   the provided 'width', 'height' & 'depth' is used to specify the
+ *   dimensions of the returned cube.
+ *
+ * @see struct sg_position
+ * @see struct sg_normal
+ * @see struct sg_texcoord
+ *
+ * @return a return code indicating the status of the usage.
+ */
 SG_API_EXPORT
 enum sg_status
-sg_sphere_indices(SG_OUT SG_indice* dst,
-				  SG_OUT SG_size* dstlen);
+sg_cube(SG_IN  const SG_float width,
+		SG_IN  const SG_float height,
+		SG_IN  const SG_float depth,
+		SG_OUT SG_size* length,
+		SG_OUT struct sg_position* positions,
+		SG_OUT struct sg_normal* normals,
+		SG_OUT struct sg_texcoord* texcoords);
 
+/**
+ * @brief Get indexed sphere vertices.
+ *
+ * Call Signature 1:
+ * To get the length of the required memory buffers, point 'len'
+ * to a valid variable, then set 'positions', 'normals' & 'texcoords'
+ * to 'SG_nullptr'.
+ * When this is done, ensure specified 'slices' & 'stacks' are set
+ * as these determine the returned length.
+ *
+ * Call Signature 2:
+ * To get the vertices, provide 'positions', 'normals' & 'texcoords'
+ * buffers of *atleast* the returned length as gotten when using
+ * call signature 1.
+ * If any of the returnable vertex data buffers are not needed,
+ * provide 'SG_nullptr' instead.
+ *
+ * Original Reference:
+ * https://www.3dgep.com/texturing-and-lighting-with-opengl-and-glsl/#Creating_a_Sphere
+ *
+ * @return a return code indicating the status of the use.
+ */
 SG_API_EXPORT
 enum sg_status
-sg_sphere_texcoords(SG_OUT struct sg_texcoord* dst,
-					SG_OUT SG_size* dstlen);
+sg_indexed_sphere(SG_IN  const SG_float radius,
+				  SG_IN  const SG_size slices,
+				  SG_IN  const SG_size stacks,
+				  SG_OUT SG_size* length,
+				  SG_OUT struct sg_position* positions,
+				  SG_OUT struct sg_normal* normals,
+				  SG_OUT struct sg_texcoord* texcoords);
 
+
+/**
+ * @brief Get indexed sphere vertices.
+ *
+ * Call Signature 1:
+ * To get the length of the required memory buffer, call this
+ * function with 'len' pointing to a valid value, and 'indices'
+ * pointint to 'SG_nullptr'.
+ * When this is done, ensure specified 'slices' & 'stacks' are
+ * set as these determine the returned length.
+ *
+ * Call Signature 2:
+ * To get the 'indices' provide a buffer of *atleast* the
+ * returned length as gotten when using call signature 1.
+ *
+ * Original Reference:
+ * https://www.3dgep.com/texturing-and-lighting-with-opengl-and-glsl/#Creating_a_Sphere
+ *
+ * @return a return code indicating the status of the use.
+ */
 SG_API_EXPORT
 enum sg_status
-sg_sphere_normals(SG_OUT struct sg_normal* dst,
-				  SG_OUT SG_size* dstlen);
+sg_indexed_sphere_indices(SG_IN  const SG_size slices,
+						  SG_IN  const SG_size stacks,
+						  SG_OUT SG_size* len,
+						  SG_OUT SG_indice* indices);
+
 
 /**
  * @brief Get Material properties for 'gold'.
@@ -707,242 +699,204 @@ sg_plane_texcoords(SG_OUT struct sg_texcoord* dst,
 	return SG_OK_RETURNED_BUFFER;
 }
 
-SG_API_EXPORT
-enum sg_status
-sg_cube_positions(SG_IN  const SG_float width,
-				  SG_IN  const SG_float height,
-				  SG_IN  const SG_float depth,
-				  SG_OUT struct sg_position* dst,
-				  SG_OUT SG_size* dstlen)
-{
-	const struct sg_position positions[] = {
-		{-width, -height, -depth},
-		{ width, -height, -depth},
-		{ width,  height, -depth},
-		{ width,  height, -depth},
-		{-width,  height, -depth},
-		{-width, -height, -depth},
-
-		{-width, -height,  depth},
-		{ width, -height,  depth},
-		{ width,  height,  depth},
-		{ width,  height,  depth},
-		{-width,  height,  depth},
-		{-width, -height,  depth},
-
-		{-width,  height,  depth},
-		{-width,  height, -depth},
-		{-width, -height, -depth},
-		{-width, -height, -depth},
-		{-width, -height,  depth},
-		{-width,  height,  depth},
-
-		{ width,  height,  depth},
-		{ width,  height, -depth},
-		{ width, -height, -depth},
-		{ width, -height, -depth},
-		{ width, -height,  depth},
-		{ width,  height,  depth},
-
-		{-width, -height, -depth},
-		{ width, -height, -depth},
-		{ width, -height,  depth},
-		{ width, -height,  depth},
-		{-width, -height,  depth},
-		{-width, -height, -depth},
-
-		{-width,  height, -depth},
-		{ width,  height, -depth},
-		{ width,  height,  depth},
-		{ width,  height,  depth},
-		{-width,  height,  depth},
-		{-width,  height, -depth},
-	};
-	SG_size i;
-		if (dstlen == SG_nullptr)
-		return SG_ERR_DSTLEN_NOT_PROVIDED;
-
-	*dstlen = SG_ARRAY_LEN(positions);
-	if (dst == SG_nullptr)
-		return SG_OK_RETURNED_LEN;
-	
-	for (i = 0; i < SG_ARRAY_LEN(positions); ++i)
-		dst[i] = positions[i];
-
-	return SG_OK_RETURNED_BUFFER;
-}
-	
-enum sg_status
-sg_cube_normals(SG_OUT struct sg_normal* dst,
-				SG_OUT SG_size* dstlen)
-{
-
-	const struct sg_normal out[] = {
-		{0.0f,  0.0f, -1.0f},
-		{0.0f,  0.0f, -1.0f}, 
-		{0.0f,  0.0f, -1.0f}, 
-		{0.0f,  0.0f, -1.0f}, 
-		{0.0f,  0.0f, -1.0f}, 
-		{0.0f,  0.0f, -1.0f}, 
-
-		{0.0f,  0.0f, 1.0f},
-		{0.0f,  0.0f, 1.0f},
-		{0.0f,  0.0f, 1.0f},
-		{0.0f,  0.0f, 1.0f},
-		{0.0f,  0.0f, 1.0f},
-		{0.0f,  0.0f, 1.0f},
-
-		{1.0f,  0.0f,  0.0f},
-		{1.0f,  0.0f,  0.0f},
-		{1.0f,  0.0f,  0.0f},
-		{1.0f,  0.0f,  0.0f},
-		{1.0f,  0.0f,  0.0f},
-		{1.0f,  0.0f,  0.0f},
-
-		{1.0f,  0.0f,  0.0f},
-		{1.0f,  0.0f,  0.0f},
-		{1.0f,  0.0f,  0.0f},
-		{1.0f,  0.0f,  0.0f},
-		{1.0f,  0.0f,  0.0f},
-		{1.0f,  0.0f,  0.0f},
-
-		{0.0f, -1.0f,  0.0f},
-		{0.0f, -1.0f,  0.0f},
-		{0.0f, -1.0f,  0.0f},
-		{0.0f, -1.0f,  0.0f},
-		{0.0f, -1.0f,  0.0f},
-		{0.0f, -1.0f,  0.0f},
-
-		{0.0f,  1.0f,  0.0f},
-		{0.0f,  1.0f,  0.0f},
-		{0.0f,  1.0f,  0.0f},
-		{0.0f,  1.0f,  0.0f},
-		{0.0f,  1.0f,  0.0f},
-		{0.0f,  1.0f,  0.0f}
-	};
-	const SG_size outlen = SG_ARRAY_LEN(out);
-	SG_size i;
-		if (dstlen == SG_nullptr)
-		return SG_ERR_DSTLEN_NOT_PROVIDED;
-
-	*dstlen = outlen;
-	if (dst == SG_nullptr)
-		return SG_OK_RETURNED_LEN;
-	
-	for (i = 0; i < outlen; ++i) {
-		dst[i] = out[i];
-	}
-
-	return SG_OK_RETURNED_BUFFER;
-}
 
 enum sg_status
-sg_cube_texcoords(SG_OUT struct sg_texcoord* dst,
-				  SG_OUT SG_size* dstlen)
+sg_plane(SG_IN  const SG_float width,
+		 SG_IN  const SG_float height,
+		 SG_OUT SG_size* length,
+		 SG_OUT struct sg_position* positions,
+		 SG_OUT struct sg_texcoord* texcoords)
 {
-	const struct sg_texcoord texcoords[] = {
-		{0.0f, 0.0f},
-		{1.0f, 0.0f},
-		{1.0f, 1.0f},
-		{1.0f, 1.0f},
-		{0.0f, 1.0f},
-		{0.0f, 0.0f},
-		
-		{0.0f, 0.0f},
-		{1.0f, 0.0f},
-		{1.0f, 1.0f},
-		{1.0f, 1.0f},
-		{0.0f, 1.0f},
-		{0.0f, 0.0f},
-		
-		{1.0f, 0.0f},
-		{1.0f, 1.0f},
-		{0.0f, 1.0f},
-		{0.0f, 1.0f},
-		{0.0f, 0.0f},
-		{1.0f, 0.0f},
-		
-		{1.0f, 0.0f},
-		{1.0f, 1.0f},
-		{0.0f, 1.0f},
-		{0.0f, 1.0f},
-		{0.0f, 0.0f},
-		{1.0f, 0.0f},
-		
-		{0.0f, 1.0f},
-		{1.0f, 1.0f},
-		{1.0f, 0.0f},
-		{1.0f, 0.0f},
-		{0.0f, 0.0f},
-		{0.0f, 1.0f},
-		
-		{0.0f, 1.0f},
-		{1.0f, 1.0f},
-		{1.0f, 0.0f},
-		{1.0f, 0.0f},
-		{0.0f, 0.0f},
-		{0.0f, 1.0f}
-	};
-	SG_size i;
-
-	if (dstlen == SG_nullptr)
-		return SG_ERR_DSTLEN_NOT_PROVIDED;
-
-	*dstlen = SG_ARRAY_LEN(texcoords);
-	if (dst == SG_nullptr)
-		return SG_OK_RETURNED_LEN;
-	
-	for (i = 0; i < SG_ARRAY_LEN(texcoords); ++i) {
-		dst[i] = texcoords[i];
-	}
-
-	return SG_OK_RETURNED_BUFFER;
-}
-
-enum sg_status
-sg_sphere_positions(SG_IN  const SG_float width,
-					SG_IN  const SG_float height,
-					SG_IN  const SG_float depth,
-					SG_OUT struct sg_position* dst,
-					SG_OUT SG_size* dstlen)
-{
-	SG_ASSERT_NOT_IMPLEMENTED("sg_sphere_positions");
+	SG_ASSERT_NOT_IMPLEMENTED("sg_plane");
 	SG_UNREFERENCED(width);
 	SG_UNREFERENCED(height);
-	SG_UNREFERENCED(depth);
-	SG_UNREFERENCED(dst);
-	SG_UNREFERENCED(dstlen);
+	SG_UNREFERENCED(length);
+	SG_UNREFERENCED(positions);
+	SG_UNREFERENCED(texcoords);
 	return SG_ERR_NOT_IMPLEMENTED_YET;
+
+}
+
+
+enum sg_status
+sg_cube(SG_IN  const SG_float width,
+		SG_IN  const SG_float height,
+		SG_IN  const SG_float depth,
+		SG_OUT SG_size* length,
+		SG_OUT struct sg_position* positions,
+		SG_OUT struct sg_normal* normals,
+		SG_OUT struct sg_texcoord* texcoords)
+{
+	const struct sg_position _positions[] = {
+		{-width, -height, -depth}, { width, -height, -depth}, { width,  height, -depth},
+		{ width,  height, -depth}, {-width,  height, -depth}, {-width, -height, -depth},
+
+		{-width, -height,  depth}, { width, -height,  depth}, { width,  height,  depth},
+		{ width,  height,  depth}, {-width,  height,  depth}, {-width, -height,  depth},
+
+		{-width,  height,  depth}, {-width,  height, -depth}, {-width, -height, -depth},
+		{-width, -height, -depth}, {-width, -height,  depth}, {-width,  height,  depth},
+
+		{ width,  height,  depth}, { width,  height, -depth}, { width, -height, -depth},
+		{ width, -height, -depth}, { width, -height,  depth}, { width,  height,  depth},
+
+		{-width, -height, -depth}, { width, -height, -depth}, { width, -height,  depth},
+		{ width, -height,  depth}, {-width, -height,  depth}, {-width, -height, -depth},
+
+		{-width,  height, -depth}, { width,  height, -depth}, { width,  height,  depth},
+		{ width,  height,  depth}, {-width,  height,  depth}, {-width,  height, -depth},
+	};
+	const struct sg_normal _normals[] = {
+		{0.0f,  0.0f, -1.0f}, {0.0f,  0.0f, -1.0f},  {0.0f,  0.0f, -1.0f}, 
+		{0.0f,  0.0f, -1.0f}, {0.0f,  0.0f, -1.0f},  {0.0f,  0.0f, -1.0f}, 
+
+		{0.0f,  0.0f, 1.0f}, {0.0f,  0.0f, 1.0f}, {0.0f,  0.0f, 1.0f},
+		{0.0f,  0.0f, 1.0f}, {0.0f,  0.0f, 1.0f}, {0.0f,  0.0f, 1.0f},
+
+		{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
+		{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
+
+		{1.0f,  0.0f,  0.0f},{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
+		{1.0f,  0.0f,  0.0f},{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
+
+		{0.0f, -1.0f,  0.0f}, {0.0f, -1.0f,  0.0f}, {0.0f, -1.0f,  0.0f},
+		{0.0f, -1.0f,  0.0f}, {0.0f, -1.0f,  0.0f}, {0.0f, -1.0f,  0.0f},
+
+		{0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f},
+		{0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f}
+	};
+	const struct sg_texcoord _texcoords[] = {
+		{0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f},
+		{1.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f},
+		
+		{0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f},
+		{1.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f},
+		
+		{1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f},
+		{0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f},
+		
+		{1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f},
+		{0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f},
+		
+		{0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f},
+		{1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 1.0f},
+		
+		{0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f},
+		{1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 1.0f}
+	};
+	SG_size i;
+
+	if (length == SG_nullptr)
+		return SG_ERR_DSTLEN_NOT_PROVIDED;
+
+	if (positions == SG_nullptr && normals == SG_nullptr && texcoords == SG_nullptr) {
+		*length = 36;
+		return SG_OK_RETURNED_LEN;
+	}
+
+	if (positions != SG_nullptr)
+		for (i = 0; i < 36; ++i)
+			positions[i] = _positions[i];
+
+	if (normals != SG_nullptr)
+		for (i = 0; i < 36; ++i)
+			normals[i] = _normals[i];
+
+	if (texcoords != SG_nullptr)
+		for (i = 0; i < 36; ++i)
+			texcoords[i] = _texcoords[i];
+
+	return SG_OK_RETURNED_BUFFER;
+}
+
+
+
+enum sg_status
+sg_indexed_sphere(SG_IN  const SG_float radius,
+				  SG_IN  const SG_size slices,
+				  SG_IN  const SG_size stacks,
+				  SG_OUT SG_size* length,
+				  SG_OUT struct sg_position* positions,
+				  SG_OUT struct sg_normal* normals,
+				  SG_OUT struct sg_texcoord* texcoords)
+{
+	SG_size n;
+	SG_size i;
+	SG_size j;
+	SG_float phi;
+	SG_float theta;
+	sg_normal normal;
+	sg_texcoord texcoord;
+	sg_position position;
+
+	if (length == SG_nullptr)
+		return SG_ERR_DSTLEN_NOT_PROVIDED;
+
+	if (positions == SG_nullptr && normals == SG_nullptr && texcoords == SG_nullptr) {
+		*length = (slices+1)*(stacks+1);
+		return SG_OK_RETURNED_LEN;
+	}
+
+	n = 0;
+	for (i = 0; i <= stacks; ++i) {
+		texcoord.v = i / (SG_float)stacks;
+		phi = texcoord.v * SG_PI;
+
+		for (j = 0; j <= slices; ++j) {
+			texcoord.u = j / (SG_float)slices;
+			theta = texcoord.u * SG_2PI;
+
+			normal.x = SG_COS(theta) * SG_SIN(phi);
+			normal.y = SG_COS(phi);
+			normal.z = SG_SIN(theta) * SG_SIN(phi);
+
+			if (normals != SG_nullptr)
+				normals[n] = normal;
+
+			if (positions != SG_nullptr) {
+				position.x = normal.x * radius;
+				position.y = normal.y * radius;
+				position.z = normal.z * radius;
+				positions[n] = position;
+			}
+			
+			if (texcoords != SG_nullptr)
+				texcoords[n] = texcoord;
+			n++;
+		}
+	}
+
+	return SG_OK_RETURNED_BUFFER;
 }
 
 enum sg_status
-sg_sphere_indices(SG_OUT SG_indice* dst,
-				  SG_OUT SG_size* dstlen)
+sg_indexed_sphere_indices(SG_IN  const SG_size slices,
+						  SG_IN  const SG_size stacks,
+						  SG_OUT SG_size* len,
+						  SG_OUT SG_indice* indices)
 {
-	SG_ASSERT_NOT_IMPLEMENTED("sg_sphere_indices");
-	SG_UNREFERENCED(dst);
-	SG_UNREFERENCED(dstlen);
-	return SG_ERR_NOT_IMPLEMENTED_YET;
-}
+	SG_size i;
+	SG_size n;
+	if (len == SG_nullptr)
+		return SG_ERR_DSTLEN_NOT_PROVIDED;
+	
+	if (indices == SG_nullptr) {
+		*len = (slices * stacks + slices) * 6;
+		return SG_OK_RETURNED_LEN;
+	}
+	
+	n = 0;
+	for (i = 0; i < slices * stacks + slices; ++i) {
+		indices[n++] = i;
+		indices[n++] = i + slices + 1;
+		indices[n++] = i + slices;
 
-enum sg_status
-sg_sphere_texcoords(SG_OUT struct sg_texcoord* dst,
-					SG_OUT SG_size* dstlen)
-{
-	SG_ASSERT_NOT_IMPLEMENTED("sg_sphere_texcoords");
-	SG_UNREFERENCED(dst);
-	SG_UNREFERENCED(dstlen);
-	return SG_ERR_NOT_IMPLEMENTED_YET;
-}
+		indices[n++] = i + slices + 1;
+		indices[n++] = i;
+		indices[n++] = i + 1;
+	}
 
-enum sg_status
-sg_sphere_normals(SG_OUT struct sg_normal* dst,
-				  SG_OUT SG_size* dstlen)
-{
-	SG_ASSERT_NOT_IMPLEMENTED("sg_sphere_normals");
-	SG_UNREFERENCED(dst);
-	SG_UNREFERENCED(dstlen);
-	return SG_ERR_NOT_IMPLEMENTED_YET;
+	return SG_OK_RETURNED_BUFFER;
 }
 
 struct sg_material
