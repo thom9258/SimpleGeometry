@@ -23,10 +23,29 @@ struct vertex_posnorm {
 	}
 };
 
+struct Material {
+	Material()
+		: Material(sg_material_default_flat_white())
+	{}
+
+	Material(const sg_material mat)
+		: ambient(glm::vec3(mat.ambient.x, mat.ambient.y, mat.ambient.z))
+		, diffuse(glm::vec3(mat.diffuse.x, mat.diffuse.y, mat.diffuse.z))
+		, specular(glm::vec3(mat.specular.x, mat.specular.y, mat.specular.z))
+		, shininess(mat.shininess)
+	{}
+
+	glm::vec3 ambient;
+	glm::vec3 diffuse;
+	glm::vec3 specular;
+	SG_float shininess;
+};
+
 struct NormMesh {
 	GLuint vao;
 	GLuint vbo;
 	size_t length; 
+	Material material;
 };
 
 struct IndexedNormMesh {
@@ -34,13 +53,25 @@ struct IndexedNormMesh {
 	GLuint vbo;
 	GLuint ebo;
 	size_t indice_length; 
+	Material material;
 };
 
+struct PointLight {
+	PointLight(const glm::vec3 position, const sg_material mat)
+		: position(position)
+		, material(mat)
+	{}
+
+	glm::vec3 position;
+	Material material;
+};
+	
 
 [[nodiscard]]
-NormMesh cube()
+NormMesh cube(const sg_material mat)
 {
-	NormMesh mesh{};
+	NormMesh mesh;
+	mesh.material = mat;
 
 	sg_status status;
 	SG_size vertices_length{0};
@@ -108,13 +139,15 @@ NormMesh cube()
 }
 
 [[nodiscard]]
-IndexedNormMesh sphere()
+IndexedNormMesh sphere(const sg_material mat)
 {
 	constexpr float radius = 0.5f;
 	constexpr auto slices = 16;
 	constexpr auto stacks = 16;
 
 	IndexedNormMesh mesh{};
+	mesh.material = mat;
+
 	sg_status status;
 	SG_size vertices_length{0};
 	
