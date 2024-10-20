@@ -3,7 +3,7 @@
 #define SIMPLE_GEOMETRY_IMPLEMENTATION
 #include "../simple_geometry.h"
 
-#include "Random.hpp"
+#include "utils/Random.hpp"
 
 #include <iostream>
 #include <string>

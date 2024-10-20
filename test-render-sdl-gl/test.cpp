@@ -1,7 +1,8 @@
-#include "Shader.hpp"
+#include "utils/Shader.hpp"
+#include "utils/OrbitCamera.hpp"
+#include "utils/DeltaClock.hpp"
+
 #include "GenerateGeometries.hpp"
-#include "OrbitCamera.hpp"
-#include "DeltaClock.hpp"
 
 #include <malloc.h>
 #include <stdio.h>
