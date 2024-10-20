@@ -220,11 +220,13 @@ struct Shaders {
 	std::unique_ptr<Shader> norm{nullptr};
 	
 	explicit Shaders() {
-		const auto phong_vert = Shader::file_slurp("../phong.vert");
+		const std::string shader_path = "../shaders/";
+
+		const auto phong_vert = Shader::file_slurp(shader_path + "phong.vert");
 		if (!phong_vert.has_value())
 			throw std::runtime_error("could not load phong vert");
 		
-		const auto phong_frag = Shader::file_slurp("../phong.frag");
+		const auto phong_frag = Shader::file_slurp(shader_path + "phong.frag");
 		if (!phong_vert.has_value())
 			throw std::runtime_error("could not load phong frag");
 		
@@ -239,11 +241,11 @@ struct Shaders {
 				}
 			}, phong_shader);
 		
-		const auto norm_vert = Shader::file_slurp("../normal.vert");
+		const auto norm_vert = Shader::file_slurp(shader_path + "normal.vert");
 		if (!norm_vert.has_value())
 			throw std::runtime_error("could not load normal.vert");
 		
-		const auto norm_frag = Shader::file_slurp("../normal.frag");
+		const auto norm_frag = Shader::file_slurp(shader_path + "normal.frag");
 		if (!norm_vert.has_value())
 			throw std::runtime_error("could not load normal.frag");
 
