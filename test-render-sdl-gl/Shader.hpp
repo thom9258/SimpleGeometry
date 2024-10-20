@@ -1,3 +1,5 @@
+#pragma once
+
 #include <glad/glad.h>
 #include <SDL2/SDL.h>
 #include <SDL_opengl.h>
@@ -19,7 +21,6 @@
 
 #include "Error.hpp"
 
-// helper type for the visitor #4
 template<class... Ts> struct variant_switch : Ts... { using Ts::operator()...; };
 
 // explicit deduction guide (not needed as of C++20)
@@ -212,3 +213,51 @@ void Shader::set_vec4(const std::string &name, const glm::vec4 value) {
 		throw std::runtime_error("Uniform '" + name + "' does not exist!");
     glUniform4f(*location, value.x, value.y, value.z, value.w); 
 }
+
+
+struct Shaders {
+	std::unique_ptr<Shader> phong{nullptr};
+	std::unique_ptr<Shader> norm{nullptr};
+	
+	explicit Shaders() {
+		const auto phong_vert = Shader::file_slurp("../phong.vert");
+		if (!phong_vert.has_value())
+			throw std::runtime_error("could not load phong vert");
+		
+		const auto phong_frag = Shader::file_slurp("../phong.frag");
+		if (!phong_vert.has_value())
+			throw std::runtime_error("could not load phong frag");
+		
+		auto phong_shader = Shader::create(phong_vert.value().c_str(),
+										   phong_frag.value().c_str());
+		std::visit(variant_switch {
+				[] (const Shader::Error& error) {
+					throw std::runtime_error(error.what);
+				},
+				[&] (Shader::Uptr& ptr) {
+					phong = std::move(ptr);
+				}
+			}, phong_shader);
+		
+		const auto norm_vert = Shader::file_slurp("../normal.vert");
+		if (!norm_vert.has_value())
+			throw std::runtime_error("could not load normal.vert");
+		
+		const auto norm_frag = Shader::file_slurp("../normal.frag");
+		if (!norm_vert.has_value())
+			throw std::runtime_error("could not load normal.frag");
+
+		auto norm_shader = Shader::create(norm_vert.value().c_str(),
+										  norm_frag.value().c_str());
+		std::visit(variant_switch {
+				[] (const Shader::Error& error) {
+					throw std::runtime_error(error.what);
+				},
+				[&] (Shader::Uptr& ptr) {
+					norm = std::move(ptr);
+				}
+			}, norm_shader);
+	}
+};
+
+

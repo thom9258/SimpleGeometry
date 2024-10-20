@@ -12,17 +12,20 @@ class RandomModelRotator
 {
 public:
 	explicit RandomModelRotator() 
+		: RandomModelRotator(glm::translate(glm::scale(glm::mat4(1.0f),
+													   glm::vec3(random_float(0.5f, 1.0f))),
+											glm::vec3(random_float(-5.0f, 5.0f),
+													  random_float(0.0f, 2.0f),
+													  random_float(-5.0f, 5.0f))))
+	{}
+
+	explicit RandomModelRotator(const glm::mat4 model)
+		: m_model(model)
 	{
 		m_speed = random_float(40.0f, 90.0f);
 		m_axis = glm::vec3(random_float(-1.0f, 1.0f),
 						   random_float(-1.0f, 1.0f),
 						   random_float(-1.0f, 1.0f));
-		
-		m_model = glm::mat4(1.0f);
-		m_model = glm::scale(m_model, glm::vec3(random_float(0.5f, 1.0f)));
-		m_model = glm::translate(m_model, glm::vec3(random_float(-1.0f, 1.0f),
-													random_float(-1.0f, 1.0f),
-													random_float(-1.0f, 1.0f)));
 	}
 
 	glm::mat4 final_model_matrix(const float time) const noexcept
@@ -36,9 +39,3 @@ private:
 	float m_speed = 0.0f;
 };
 
-
-template <typename Mesh>
-struct RandomRotatedMesh {
-	Mesh mesh;
-	RandomModelRotator rotator;
-};
