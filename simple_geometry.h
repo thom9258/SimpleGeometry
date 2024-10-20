@@ -444,6 +444,22 @@ struct sg_material
 sg_material_obsidian(); 
 	
 /**
+ * @brief Get Material properties for 'ruby'.
+ */
+SG_API_EXPORT
+struct sg_material
+sg_material_ruby(); 
+
+/**
+ * @brief Get Material properties for 'emerald'.
+ */
+SG_API_EXPORT
+struct sg_material
+sg_material_emerald(); 
+
+
+	
+/**
  * @brief Get Material properties for 'default flat white'.
  * This color emulates the default white color material for
  * for primitive objects used in common editors and engines.
@@ -918,6 +934,28 @@ sg_material_obsidian()
 	mat.diffuse  = (struct sg_vec3f) {0.18275f, 0.17f, 0.22525f};
 	mat.specular = (struct sg_vec3f) {0.332741f, 0.328634f, 0.346435f};
 	mat.shininess = 0.3f;
+	return mat;
+}
+
+struct sg_material
+sg_material_ruby()
+{
+	struct sg_material mat;
+	mat.ambient  = (struct sg_vec3f) {0.1745f, 0.01175f, 0.01175f};
+	mat.diffuse  = (struct sg_vec3f) {0.61424, 0.04136f, 0.04136};
+	mat.specular = (struct sg_vec3f) {0.727811f, 0.626959f, 0.626959};
+	mat.shininess = 0.6f;
+	return mat;
+}
+
+struct sg_material
+sg_material_emerald()
+{
+	struct sg_material mat;
+	mat.ambient  = (struct sg_vec3f) {0.0215f, 0.1745f, 0.0215};
+	mat.diffuse  = (struct sg_vec3f) {0.07568f, 0.61424f, 0.07568f};
+	mat.specular = (struct sg_vec3f) {0.633f, 0.727811f, 0.633f};
+	mat.shininess = 0.6f;
 	return mat;
 }
 	
