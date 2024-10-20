@@ -218,6 +218,7 @@ void Shader::set_vec4(const std::string &name, const glm::vec4 value) {
 struct Shaders {
 	std::unique_ptr<Shader> phong{nullptr};
 	std::unique_ptr<Shader> norm{nullptr};
+	std::unique_ptr<Shader> solidcolor{nullptr};
 	
 	explicit Shaders() {
 		const std::string shader_path = "../shaders/";
@@ -259,6 +260,26 @@ struct Shaders {
 					norm = std::move(ptr);
 				}
 			}, norm_shader);
+		
+		const auto solidcolor_vert = Shader::file_slurp(shader_path + "solidcolor.vert");
+		if (!solidcolor_vert.has_value())
+			throw std::runtime_error("could not load solidcolor.vert");
+		
+		const auto solidcolor_frag = Shader::file_slurp(shader_path + "solidcolor.frag");
+		if (!solidcolor_vert.has_value())
+			throw std::runtime_error("could not load solidcolor.frag");
+
+		auto solidcolor_shader = Shader::create(solidcolor_vert.value().c_str(),
+										  solidcolor_frag.value().c_str());
+		std::visit(variant_switch {
+				[] (const Shader::Error& error) {
+					throw std::runtime_error(error.what);
+				},
+				[&] (Shader::Uptr& ptr) {
+					solidcolor = std::move(ptr);
+				}
+			}, solidcolor_shader);
+
 	}
 };
 
