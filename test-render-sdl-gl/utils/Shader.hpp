@@ -21,10 +21,7 @@
 
 #include "Error.hpp"
 
-template<class... Ts> struct variant_switch : Ts... { using Ts::operator()...; };
-
-// explicit deduction guide (not needed as of C++20)
-template<class... Ts> variant_switch(Ts...) -> variant_switch<Ts...>;
+const std::string shader_path = "../shaders/";
 
 class Shader {
 public:
@@ -42,9 +39,7 @@ public:
 			: where(where), what(what)
 		{}
 	};
-
-	using Uptr = std::unique_ptr<Shader>;
-	using ShaderOrError = std::variant<Shader::Uptr, Error>;
+	using Uptr = std::unique_ptr<Shader>; using ShaderOrError = std::variant<Shader::Uptr, Error>;
 	using Uniform = std::optional<GLuint>;
 	
 	[[nodiscard]]
@@ -213,74 +208,4 @@ void Shader::set_vec4(const std::string &name, const glm::vec4 value) {
 		throw std::runtime_error("Uniform '" + name + "' does not exist!");
     glUniform4f(*location, value.x, value.y, value.z, value.w); 
 }
-
-
-struct Shaders {
-	std::unique_ptr<Shader> phong{nullptr};
-	std::unique_ptr<Shader> norm{nullptr};
-	std::unique_ptr<Shader> solidcolor{nullptr};
-	
-	explicit Shaders() {
-		const std::string shader_path = "../shaders/";
-
-		const auto phong_vert = Shader::file_slurp(shader_path + "phong.vert");
-		if (!phong_vert.has_value())
-			throw std::runtime_error("could not load phong vert");
-		
-		const auto phong_frag = Shader::file_slurp(shader_path + "phong.frag");
-		if (!phong_vert.has_value())
-			throw std::runtime_error("could not load phong frag");
-		
-		auto phong_shader = Shader::create(phong_vert.value().c_str(),
-										   phong_frag.value().c_str());
-		std::visit(variant_switch {
-				[] (const Shader::Error& error) {
-					throw std::runtime_error(error.what);
-				},
-				[&] (Shader::Uptr& ptr) {
-					phong = std::move(ptr);
-				}
-			}, phong_shader);
-		
-		const auto norm_vert = Shader::file_slurp(shader_path + "normal.vert");
-		if (!norm_vert.has_value())
-			throw std::runtime_error("could not load normal.vert");
-		
-		const auto norm_frag = Shader::file_slurp(shader_path + "normal.frag");
-		if (!norm_vert.has_value())
-			throw std::runtime_error("could not load normal.frag");
-
-		auto norm_shader = Shader::create(norm_vert.value().c_str(),
-										  norm_frag.value().c_str());
-		std::visit(variant_switch {
-				[] (const Shader::Error& error) {
-					throw std::runtime_error(error.what);
-				},
-				[&] (Shader::Uptr& ptr) {
-					norm = std::move(ptr);
-				}
-			}, norm_shader);
-		
-		const auto solidcolor_vert = Shader::file_slurp(shader_path + "solidcolor.vert");
-		if (!solidcolor_vert.has_value())
-			throw std::runtime_error("could not load solidcolor.vert");
-		
-		const auto solidcolor_frag = Shader::file_slurp(shader_path + "solidcolor.frag");
-		if (!solidcolor_vert.has_value())
-			throw std::runtime_error("could not load solidcolor.frag");
-
-		auto solidcolor_shader = Shader::create(solidcolor_vert.value().c_str(),
-										  solidcolor_frag.value().c_str());
-		std::visit(variant_switch {
-				[] (const Shader::Error& error) {
-					throw std::runtime_error(error.what);
-				},
-				[&] (Shader::Uptr& ptr) {
-					solidcolor = std::move(ptr);
-				}
-			}, solidcolor_shader);
-
-	}
-};
-
 
