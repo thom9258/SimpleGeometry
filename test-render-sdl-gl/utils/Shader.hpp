@@ -21,37 +21,34 @@
 
 #include "Error.hpp"
 
-const std::string shader_path = "../shaders/";
-
-class Shader {
+class InvalidShader {
 public:
 	enum class Step {
 		Vertex,
 		Fragment,
 		Program,
 	};
+	
+	InvalidShader()
+		: InvalidShader(Step::Vertex, "?")
+	{}
+	InvalidShader(const Step where, const std::string what)
+		: where(where), what(what)
+	{}
 
-	struct Error {
-		Shader::Step where;
-		std::string what;
+	const Step where;
+	const std::string what;
+};
 
-		Error(const Shader::Step where, const std::string what)
-			: where(where), what(what)
-		{}
-	};
-	using Uptr = std::unique_ptr<Shader>; using ShaderOrError = std::variant<Shader::Uptr, Error>;
+class ValidShader {
+public:
 	using Uniform = std::optional<GLuint>;
 	
-	[[nodiscard]]
-    static ShaderOrError create(const char* vertex_source,
-							    const char* fragment_source);
-
-	[[nodiscard]]	
-	static std::optional<std::string> file_slurp(const std::filesystem::path& path) noexcept;
-
-
-    explicit Shader(const GLuint program) noexcept;
-    ~Shader(void) noexcept;
+    ValidShader(const GLuint program) noexcept;
+    ~ValidShader(void) noexcept;
+	
+	ValidShader(const ValidShader&) = delete;
+	ValidShader operator=(const ValidShader&) = delete;
 
 	[[nodiscard]]
 	GLuint program() noexcept;
@@ -65,23 +62,40 @@ public:
 	void set_int(const std::string &name, const int value);
 	void set_float(const std::string &name, const float value);
 	void set_vec3(const std::string &name, const glm::vec3 value);
+	void set_vec3(const std::string &name, const float x, const float y, const float z);
 	void set_vec4(const std::string &name, const glm::vec4 value);
+	void set_vec4(const std::string &name,
+				  const float x,
+				  const float y,
+				  const float z,
+				  const float w);
 
 private:
     GLuint m_program{0};
 };
 
-Shader::Shader(const GLuint program) noexcept
-    : m_program(program) 
+using Shader = std::variant<std::unique_ptr<ValidShader>, InvalidShader>;
+
+class ShaderBuilder 
 {
+public:
+	[[nodiscard]]
+	static Shader produce(const char* vertex_source, const char* fragment_source) noexcept;
+
+	[[nodiscard]]
+	static Shader produce(const std::string& vertex_source, const std::string& fragment_source) noexcept;
+
+	[[nodiscard]]	
+	static std::optional<std::string> file_slurp(const std::filesystem::path& path) noexcept;
+};
+
+
+Shader ShaderBuilder::produce(const std::string& vertex_source, const std::string& fragment_source) noexcept
+{
+	return produce(vertex_source.c_str(), fragment_source.c_str());
 }
 
-Shader::~Shader(void) noexcept 
-{
-    glDeleteShader(m_program);
-}
-
-Shader::ShaderOrError Shader::create(const char* vertex_source, const char* fragment_source) 
+Shader ShaderBuilder::produce(const char* vertex_source, const char* fragment_source) noexcept
 {
     int success;
     std::array<char, 512> infoLog;
@@ -94,7 +108,7 @@ Shader::ShaderOrError Shader::create(const char* vertex_source, const char* frag
     glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
     if(!success) {
         glGetShaderInfoLog(vertex, infoLog.size(), NULL, infoLog.data());
-		return Error(Shader::Step::Vertex, std::string(infoLog.data()));
+		return InvalidShader(InvalidShader::Step::Vertex, std::string(infoLog.data()));
     }
     
     GLuint fragment = glCreateShader(GL_FRAGMENT_SHADER);
@@ -106,7 +120,7 @@ Shader::ShaderOrError Shader::create(const char* vertex_source, const char* frag
     if(!success) {
 		glDeleteShader(vertex);
         glGetShaderInfoLog(fragment, infoLog.size(), NULL, infoLog.data());
-		return Error(Shader::Step::Fragment, std::string(infoLog.data()));
+		return InvalidShader(InvalidShader::Step::Fragment, std::string(infoLog.data()));
     }
 
     GLuint program = glCreateProgram();
@@ -121,13 +135,13 @@ Shader::ShaderOrError Shader::create(const char* vertex_source, const char* frag
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if(!success) {
         glGetShaderInfoLog(program, infoLog.size(), NULL, infoLog.data());
-		return Error(Shader::Step::Program, std::string(infoLog.data()));
+		return InvalidShader(InvalidShader::Step::Program, std::string(infoLog.data()));
     }
 
-    return std::make_unique<Shader>(program);
+    return std::make_unique<ValidShader>(program);
 }
 
-std::optional<std::string> Shader::file_slurp(const std::filesystem::path& path) noexcept
+std::optional<std::string> ShaderBuilder::file_slurp(const std::filesystem::path& path) noexcept
 {
 	std::error_code err;
 	if (!std::filesystem::is_regular_file(path, err))
@@ -145,19 +159,28 @@ std::optional<std::string> Shader::file_slurp(const std::filesystem::path& path)
 
 	return str;
 }
+
+ValidShader::ValidShader(const GLuint program) noexcept
+    : m_program(program) 
+{}
+
+ValidShader::~ValidShader(void) noexcept 
+{
+    glDeleteShader(m_program);
+}
 	
-GLuint Shader::program() noexcept
+GLuint ValidShader::program() noexcept
 {
     return m_program;
 }
 
-void Shader::activate() noexcept
+void ValidShader::activate() noexcept
 {
     glUseProgram(m_program);
 	GL_THROW_ON_ERROR();
 }
 
-Shader::Uniform Shader::uniform(const std::string &name) noexcept
+ValidShader::Uniform ValidShader::uniform(const std::string &name) noexcept
 {         
     const auto location = glGetUniformLocation(m_program, name.c_str());
     if (location == -1)
@@ -165,7 +188,7 @@ Shader::Uniform Shader::uniform(const std::string &name) noexcept
     return {location};
 }
 	
-Shader::Uniform Shader::uniform_block_index(const std::string &name) noexcept
+ValidShader::Uniform ValidShader::uniform_block_index(const std::string &name) noexcept
 {
 	const auto location = glGetUniformBlockIndex(m_program, name.c_str());
     if (location == GL_INVALID_INDEX) {
@@ -174,38 +197,59 @@ Shader::Uniform Shader::uniform_block_index(const std::string &name) noexcept
 	return location;
 }
 
-void Shader::set_mat4(const std::string &name, const glm::mat4 value) {
+void ValidShader::set_mat4(const std::string &name, const glm::mat4 value) 
+{
     const auto location = uniform(name);
     if (!location)
 		throw std::runtime_error(name + " uniform does not exist!");
     glUniformMatrix4fv(*location, 1, GL_FALSE, glm::value_ptr(value)); 
 }
 
-void Shader::set_int(const std::string &name, const int value) {
+void ValidShader::set_int(const std::string &name, const int value) 
+{
     const auto location = uniform(name);
     if (!location)
 		throw std::runtime_error("Uniform '" + name + "' does not exist!");
     glUniform1i(*location, value); 
 }
 
-void Shader::set_float(const std::string &name, const float value) {
+void ValidShader::set_float(const std::string &name, const float value) 
+{
     const auto location = uniform(name);
     if (!location)
 		throw std::runtime_error("Uniform '" + name + "' does not exist!");
     glUniform1f(*location, value); 
 }
 
-void Shader::set_vec3(const std::string &name, const glm::vec3 value) {
+void ValidShader::set_vec3(const std::string &name, const glm::vec3 value) 
+{
     const auto location = uniform(name);
     if (!location)
 		throw std::runtime_error("Uniform '" + name + "' does not exist!");
     glUniform3f(*location, value.x, value.y, value.z); 
 }
 
-void Shader::set_vec4(const std::string &name, const glm::vec4 value) {
+void ValidShader::set_vec3(const std::string &name,
+						   const float x,
+						   const float y,
+						   const float z)
+{
+	set_vec3(name, glm::vec3(x, y, z));
+}
+
+void ValidShader::set_vec4(const std::string &name, const glm::vec4 value) 
+{
     const auto location = uniform(name);
     if (!location)
 		throw std::runtime_error("Uniform '" + name + "' does not exist!");
     glUniform4f(*location, value.x, value.y, value.z, value.w); 
 }
 
+void ValidShader::set_vec4(const std::string &name,
+						   const float x,
+						   const float y,
+						   const float z,
+						   const float w)
+{
+	set_vec4(name, glm::vec4(x, y, z, w));
+}
