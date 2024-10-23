@@ -66,6 +66,15 @@ struct PointLight {
 	Material material;
 };
 	
+struct DirectionalLight {
+	DirectionalLight(const glm::vec3 direction, const sg_material mat)
+		: direction(direction)
+		, material(mat)
+	{}
+
+	glm::vec3 direction;
+	Material material;
+};
 
 [[nodiscard]]
 NormMesh cube(const sg_material mat)

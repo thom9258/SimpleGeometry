@@ -15,6 +15,7 @@
 #define WIDTH 1200
 #define HEIGHT 900
 #define NAME "Simple Geometry Rendering"
+const std::string shader_path = "../shaders/";
 
 
 #define UNUSED(V) ((void)V)
@@ -65,29 +66,24 @@ using Drawable = std::variant<RandomRotated<NormMesh>,
 
 class NormalDirectionDrawer
 {
-	std::shared_ptr<Shader> m_shader{nullptr};
+	std::shared_ptr<ValidShader> m_shader;
 
 public:
 	explicit NormalDirectionDrawer()
 	{
-		const auto norm_vert = Shader::file_slurp(shader_path + "normal.vert");
-		if (!norm_vert.has_value())
+		const auto vert = ShaderBuilder::file_slurp(shader_path + "normal.vert");
+		if (!vert.has_value())
 			throw std::runtime_error("could not load normal.vert");
 		
-		const auto norm_frag = Shader::file_slurp(shader_path + "normal.frag");
-		if (!norm_vert.has_value())
+		const auto frag = ShaderBuilder::file_slurp(shader_path + "normal.frag");
+		if (!frag.has_value())
 			throw std::runtime_error("could not load normal.frag");
 
-		auto norm_shader = Shader::create(norm_vert.value().c_str(),
-										  norm_frag.value().c_str());
-		std::visit(variant_switch {
-				[] (const Shader::Error& error) {
-					throw std::runtime_error(error.what);
-				},
-				[&] (Shader::Uptr& ptr) {
-					m_shader.reset(ptr.release());
-				}
-			}, norm_shader);
+		auto shader = ShaderBuilder::produce(vert.value(), frag.value());
+
+		if (std::holds_alternative<InvalidShader>(shader))
+			throw std::runtime_error(std::get<InvalidShader>(shader).what);
+		m_shader = std::move(std::get<std::unique_ptr<ValidShader>>(shader));
 	}
 	
 	auto get(const glm::mat4 view,
@@ -162,29 +158,24 @@ public:
 
 class WireframeDrawer
 {
-	std::shared_ptr<Shader> m_shader;
+	std::shared_ptr<ValidShader> m_shader;
 
 public:
 	explicit WireframeDrawer()
 	{
-		const auto solidcolor_vert = Shader::file_slurp(shader_path + "solidcolor.vert");
-		if (!solidcolor_vert.has_value())
+		const auto vert = ShaderBuilder::file_slurp(shader_path + "solidcolor.vert");
+		if (!vert.has_value())
 			throw std::runtime_error("could not load solidcolor.vert");
 		
-		const auto solidcolor_frag = Shader::file_slurp(shader_path + "solidcolor.frag");
-		if (!solidcolor_vert.has_value())
+		const auto frag = ShaderBuilder::file_slurp(shader_path + "solidcolor.frag");
+		if (!frag.has_value())
 			throw std::runtime_error("could not load solidcolor.frag");
 
-		auto solidcolor_shader = Shader::create(solidcolor_vert.value().c_str(),
-										  solidcolor_frag.value().c_str());
-		std::visit(variant_switch {
-				[] (const Shader::Error& error) {
-					throw std::runtime_error(error.what);
-				},
-				[&] (Shader::Uptr& ptr) {
-					m_shader.reset(ptr.release());
-				}
-			}, solidcolor_shader);
+		auto shader = ShaderBuilder::produce(vert.value(), frag.value());
+
+		if (std::holds_alternative<InvalidShader>(shader))
+			throw std::runtime_error(std::get<InvalidShader>(shader).what);
+		m_shader = std::move(std::get<std::unique_ptr<ValidShader>>(shader));
 	}
 	
 	auto get(const glm::mat4 view,
@@ -268,40 +259,37 @@ public:
 
 class PhongDrawer
 {
-	std::shared_ptr<Shader> m_shader;
+	std::shared_ptr<ValidShader> m_shader;
+
 public:
 	explicit PhongDrawer()
 	{
-		const auto phong_vert = Shader::file_slurp(shader_path + "phong.vert");
-		if (!phong_vert.has_value())
+		const auto vert = ShaderBuilder::file_slurp(shader_path + "phong.vert");
+		if (!vert.has_value())
 			throw std::runtime_error("could not load phong vert");
 		
-		const auto phong_frag = Shader::file_slurp(shader_path + "phong.frag");
-		if (!phong_vert.has_value())
+		const auto frag = ShaderBuilder::file_slurp(shader_path + "phong.frag");
+		if (!frag.has_value())
 			throw std::runtime_error("could not load phong frag");
 		
-		auto phong_shader = Shader::create(phong_vert.value().c_str(),
-										   phong_frag.value().c_str());
-		std::visit(variant_switch {
-				[] (const Shader::Error& error) {
-					throw std::runtime_error(error.what);
-				},
-				[&] (Shader::Uptr& ptr) {
-					m_shader.reset(ptr.release());
-				}
-			}, phong_shader);
+		auto shader = ShaderBuilder::produce(vert.value(), frag.value());
+
+		if (std::holds_alternative<InvalidShader>(shader))
+			throw std::runtime_error(std::get<InvalidShader>(shader).what);
+		m_shader = std::move(std::get<std::unique_ptr<ValidShader>>(shader));
 	}
 
 	auto get(const glm::mat4 view,
 			 const glm::mat4 projection,
 			 const float totaltime,
+			 const DirectionalLight directionallight,
 			 const std::vector<PointLight> pointlights)
 	{
 		// we need to curry our shader into the returned functor, to do this
 		// we create a local copy
 		auto shader = m_shader;
 		return variant_switch {
-			[shader, view, projection, totaltime, pointlights] 
+			[shader, view, projection, totaltime, directionallight, pointlights] 
 			(RandomRotated<NormMesh>& draw) 
 			{
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -322,11 +310,17 @@ public:
 				shader->set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
 				shader->set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
 				shader->set_vec3("pointlight.specular", pointlights[0].material.specular);
+
+				shader->set_vec3("directionallight.direction", directionallight.direction);
+				shader->set_vec3("directionallight.ambient",   directionallight.material.ambient);
+				shader->set_vec3("directionallight.diffuse",   directionallight.material.diffuse);
+				shader->set_vec3("directionallight.specular",  directionallight.material.specular);
+
 				GL_THROW_ON_ERROR();
 				glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
 				GL_THROW_ON_ERROR();
 			},
-			[shader, view, projection, totaltime, pointlights] 
+			[shader, view, projection, totaltime, directionallight, pointlights] 
 			(RandomRotated<IndexedNormMesh>& draw) 
 			{
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -348,11 +342,17 @@ public:
 				shader->set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
 				shader->set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
 				shader->set_vec3("pointlight.specular", pointlights[0].material.specular);
+
+				shader->set_vec3("directionallight.direction", directionallight.direction);
+				shader->set_vec3("directionallight.ambient",   directionallight.material.ambient);
+				shader->set_vec3("directionallight.diffuse",   directionallight.material.diffuse);
+				shader->set_vec3("directionallight.specular",  directionallight.material.specular);
+
 				GL_THROW_ON_ERROR();
 				glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
 				GL_THROW_ON_ERROR();
 			},
-			[shader, view, projection, pointlights] 
+			[shader, view, projection, directionallight, pointlights] 
 			(Model<NormMesh>& draw) 
 			{
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -373,11 +373,17 @@ public:
 				shader->set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
 				shader->set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
 				shader->set_vec3("pointlight.specular", pointlights[0].material.specular);
+
+				shader->set_vec3("directionallight.direction", directionallight.direction);
+				shader->set_vec3("directionallight.ambient",   directionallight.material.ambient);
+				shader->set_vec3("directionallight.diffuse",   directionallight.material.diffuse);
+				shader->set_vec3("directionallight.specular",  directionallight.material.specular);
+
 				GL_THROW_ON_ERROR();
 				glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
 				GL_THROW_ON_ERROR();
 			},
-			[shader, view, projection, pointlights] 
+			[shader, view, projection, directionallight, pointlights] 
 			(Model<IndexedNormMesh>& draw) 
 			{
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -399,6 +405,12 @@ public:
 				shader->set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
 				shader->set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
 				shader->set_vec3("pointlight.specular", pointlights[0].material.specular);
+
+				shader->set_vec3("directionallight.direction", directionallight.direction);
+				shader->set_vec3("directionallight.ambient",   directionallight.material.ambient);
+				shader->set_vec3("directionallight.diffuse",   directionallight.material.diffuse);
+				shader->set_vec3("directionallight.specular",  directionallight.material.specular);
+
 				GL_THROW_ON_ERROR();
 				glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
 				GL_THROW_ON_ERROR();
@@ -587,12 +599,15 @@ int main(int argc, char** argv)
 		}
 		else {
 			const std::vector<PointLight> pointlights{
-				PointLight(glm::vec3(0.0f, 1.0f, 0.0f), sg_material_default_flat_white()),
+				PointLight(glm::vec3(0.0f, 1.0f, 0.0f), sg_material_ruby()),
 			};
+			const auto directionallight = DirectionalLight(glm::vec3(-0.2f, -1.0f, -0.3f),
+														   sg_material_default_flat_white());
 
 			draw_world(phong_drawer.get(camera->view(),
 										projection,
 										totaltime,
+										directionallight,
 										pointlights));
 		}
 		
