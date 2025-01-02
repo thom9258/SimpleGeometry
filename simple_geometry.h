@@ -103,6 +103,7 @@ enum sg_status {
 
 	SG_ERR_NULLPTR_INPUT,
 	SG_ERR_ZEROSIZE_INPUT,
+	SG_ERR_INFO_NOT_PROVIDED,
 	SG_ERR_DSTLEN_NOT_PROVIDED,
 	SG_ERR_SRCBLKSIZE_LESSTHAN_SRCSTRIDE,
 	SG_ERR_SRCBLKSIZE_LESSTHAN_DSTSTRIDE,
@@ -408,9 +409,7 @@ sg_cube(SG_IN  struct sg_cube_info* info,
  */
 SG_API_EXPORT
 enum sg_status
-sg_indexed_sphere(SG_IN  const SG_float radius,
-				  SG_IN  const SG_size slices,
-				  SG_IN  const SG_size stacks,
+sg_indexed_sphere(SG_IN  struct sg_indexed_sphere_info* info,
 				  SG_OUT SG_size* length,
 				  SG_OUT struct sg_position* positions,
 				  SG_OUT struct sg_normal* normals,
@@ -438,8 +437,7 @@ sg_indexed_sphere(SG_IN  const SG_float radius,
  */
 SG_API_EXPORT
 enum sg_status
-sg_indexed_sphere_indices(SG_IN  const SG_size slices,
-						  SG_IN  const SG_size stacks,
+sg_indexed_sphere_indices(SG_IN  struct sg_indexed_sphere_info* info,
 						  SG_OUT SG_size* len,
 						  SG_OUT SG_indice* indices);
 
@@ -511,6 +509,7 @@ sg_status_string(SG_IN const enum sg_status status)
 	case SG_OK_COPIED_TO_DST:                  return "SG_OK_COPIED_TO_DST";
 	case SG_ERR_NULLPTR_INPUT:                 return "SG_ERR_NULLPTR_INPUT";
 	case SG_ERR_ZEROSIZE_INPUT:                return "SG_ERR_ZEROSIZE_INPUT";
+	case SG_ERR_INFO_NOT_PROVIDED:             return "SG_ERR_INFO_NOT_PROVIDED";
 	case SG_ERR_DSTLEN_NOT_PROVIDED:           return "SG_ERR_DSTLEN_NOT_PROVIDED";
 	case SG_ERR_SRCBLKSIZE_LESSTHAN_SRCSTRIDE: return "SG_ERR_SRCBLKSIZE_LESSTHAN_SRCSTRIDE";
 	case SG_ERR_SRCBLKSIZE_LESSTHAN_DSTSTRIDE: return "SG_ERR_SRCBLKSIZE_LESSTHAN_DSTSTRIDE";
@@ -838,6 +837,9 @@ sg_cube(SG_IN  struct sg_cube_info* info,
 		{1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 1.0f}
 	};
 	SG_size i;
+	
+	if (info == SG_nullptr)
+		return SG_ERR_INFO_NOT_PROVIDED;
 
 	if (length == SG_nullptr)
 		return SG_ERR_DSTLEN_NOT_PROVIDED;
@@ -865,9 +867,7 @@ sg_cube(SG_IN  struct sg_cube_info* info,
 
 
 enum sg_status
-sg_indexed_sphere(SG_IN  const SG_float radius,
-				  SG_IN  const SG_size slices,
-				  SG_IN  const SG_size stacks,
+sg_indexed_sphere(SG_IN  struct sg_indexed_sphere_info* info,
 				  SG_OUT SG_size* length,
 				  SG_OUT struct sg_position* positions,
 				  SG_OUT struct sg_normal* normals,
@@ -882,21 +882,24 @@ sg_indexed_sphere(SG_IN  const SG_float radius,
 	sg_texcoord texcoord;
 	sg_position position;
 
+	if (info == SG_nullptr)
+		return SG_ERR_INFO_NOT_PROVIDED;
+
 	if (length == SG_nullptr)
 		return SG_ERR_DSTLEN_NOT_PROVIDED;
 
 	if (positions == SG_nullptr && normals == SG_nullptr && texcoords == SG_nullptr) {
-		*length = (slices+1)*(stacks+1);
+		*length = (info->slices+1)*(info->stacks+1);
 		return SG_OK_RETURNED_LEN;
 	}
 
 	n = 0;
-	for (i = 0; i <= stacks; ++i) {
-		texcoord.v = i / (SG_float)stacks;
+	for (i = 0; i <= info->stacks; ++i) {
+		texcoord.v = i / (SG_float)info->stacks;
 		phi = texcoord.v * SG_PI;
 
-		for (j = 0; j <= slices; ++j) {
-			texcoord.u = j / (SG_float)slices;
+		for (j = 0; j <= info->slices; ++j) {
+			texcoord.u = j / (SG_float)info->slices;
 			theta = texcoord.u * SG_2PI;
 
 			normal.x = SG_COS(theta) * SG_SIN(phi);
@@ -907,9 +910,9 @@ sg_indexed_sphere(SG_IN  const SG_float radius,
 				normals[n] = normal;
 
 			if (positions != SG_nullptr) {
-				position.x = normal.x * radius;
-				position.y = normal.y * radius;
-				position.z = normal.z * radius;
+				position.x = normal.x * info->radius;
+				position.y = normal.y * info->radius;
+				position.z = normal.z * info->radius;
 				positions[n] = position;
 			}
 			
@@ -923,28 +926,30 @@ sg_indexed_sphere(SG_IN  const SG_float radius,
 }
 
 enum sg_status
-sg_indexed_sphere_indices(SG_IN  const SG_size slices,
-						  SG_IN  const SG_size stacks,
+sg_indexed_sphere_indices(SG_IN  struct sg_indexed_sphere_info* info,
 						  SG_OUT SG_size* len,
 						  SG_OUT SG_indice* indices)
 {
 	SG_size i;
 	SG_size n;
+	if (info == SG_nullptr)
+		return SG_ERR_INFO_NOT_PROVIDED;
+
 	if (len == SG_nullptr)
 		return SG_ERR_DSTLEN_NOT_PROVIDED;
 	
 	if (indices == SG_nullptr) {
-		*len = (slices * stacks + slices) * 6;
+		*len = (info->slices * info->stacks + info->slices) * 6;
 		return SG_OK_RETURNED_LEN;
 	}
 	
 	n = 0;
-	for (i = 0; i < slices * stacks + slices; ++i) {
+	for (i = 0; i < info->slices * info->stacks + info->slices; ++i) {
 		indices[n++] = i;
-		indices[n++] = i + slices + 1;
-		indices[n++] = i + slices;
+		indices[n++] = i + info->slices + 1;
+		indices[n++] = i + info->slices;
 
-		indices[n++] = i + slices + 1;
+		indices[n++] = i + info->slices + 1;
 		indices[n++] = i;
 		indices[n++] = i + 1;
 	}
