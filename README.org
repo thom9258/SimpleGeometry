@@ -3,6 +3,24 @@
 Simple Geometry [SG] is an ansi-c99 single-header framework for generating simple geometry.
 SG is able to generate vertices, indices, normals & texture coordinates for various rendering primitives.
 
+Generate the vertex positions of a sphere:
+#+begin_src c++
+sg_indexed_sphere_info info{};
+info.radius = 1.0ff;
+info.slices = 5;
+info.stacks = 5;
+	
+unsigned int length;
+sg_indexed_sphere_vertices(&info, &length, nullptr, nullptr, nullptr);
+sg_position* positions = (sg_position*)malloc(length * sizeof(sg_position));
+sg_cube_vertices(&cube_info, &length, positions, nullptr, nullptr);
+
+
+//Alternatively, to create buffers in in C++ using the std::vector<>
+std::vector<sg_position> positions(length);
+sg_cube_vertices(&cube_info, &length, positions.data(), nullptr, nullptr);
+#+end_src
+
 ** Why c99
 
 The chosen way of implementating the library allows for maximum portability, and thereby usability of differernt platforms, rendering api's etc.
@@ -14,47 +32,78 @@ SG's overall goal and purpose is to provide simple rendering primitives, ready t
 The library aims to be like "stb_image.h", the centerpiese for image importing in rendering tutorials.
 With this library, new programmers should be able to just drop in "simple_geometry.h" and get started with primitive rendering with minimal friction.
 
-* C++ Example: Generate the Floor for your Render
+* How to Use: Generate a Unit Cube
 
 SG is an ansi-c99 api, but designed to work well with C++ such as with the std::vector container.
 Please note that error checking has been omited for clarity.
 
 #+begin_src c++
-// Get the size of the vertices that will be returned
-// @note because the output data pointer is 'nullptr', we explicitly
-//       ask to retrieve the length of the needed buffer.
-//       Remember to provide valid geometry configuration, as this
+// Provide an information structure, and a length destination.
+// @note because the output vertex pointers are all 'nullptr', we 
+//       explicitly ask to retrieve the length of the needed buffer.
+//       Remember to provide a valid geometry info struct, as this
 //       *can* have an influence in the returned length.
+sg_cube_info cube_info{};
+cube_info.width = 0.5f;
+cube_info.height = 0.5f;
+cube_info.depth = 0.5f;
+	
+// Provide a destination length variable, it will be overridden with
+// the minimum required count of vertices that will be returned.
+// @note the returned length signifies the count of vertices,
+//       not the required memory size.
 unsigned int length;
-sg_cube_positions(5, 5, 0.2f, nullptr, &length);
+SG_status status;
+status = sg_cube_vertices(&cube_info, &length, nullptr, nullptr, nullptr);
 
-// scale the buffer to the size of the return
+// Check that the length is correctly returned.
+// @note that alternatively, the function sg_success() can be used to
+//       convert any status into a success/failure signifying boolean.
+if (status != SG_OK_RETURNED_LEN)
+    exit(1);
+
+// Prepare buffers for the vertice data that will be generated.
+// This can be done for each of the possible outputs specified in the function
+// declaration, such as vertex- positions, normals & UV-coordinates.
+// @note the minimum memory size required is sizeof(sg_position) * length
 std::vector<sg_position> vertices(length);
 
-// Get the vertices for the geometry
+// Generate the geometry vertices.
 // @note because the output data pointer points to valid memory,
-//       the actual vertex data is calculated and outputted to
-//       the provided buffer. In this case the length pointer is
-//       not needed.
-sg_cube_positions(5, 5, 0.2f, vertices.data(), &length);
+//       the actual vertex data is generated and outputted to
+//       the provided buffers.
+// @note In this case we explicitly only generate the positions of the vertices,
+//       if Normals / UV-coordinates are needed, seperate buffers should be prepared
+//       and provided for those.
+status = sg_cube_vertices(&cube_info, &length, vertices.data(), nullptr, nullptr);
+
+if (status != SG_OK_RETURNED_BUFFER)
+    exit(1);
 #+end_src
 
 * Maximum Portability Through Design
  
-SG does not make any assumptions.
 This philosophy shines through the API's design.
-The API is designed in the rather classical vector returning style, often found in other c API's such as Vulkan. 
-In places when a buffer of generated geometry is returned, it is up to the caller to provide a memory area large enough to facilitate the returned data.
-In the case of the returned data size being unknown. one simply calls the same method, but with the output buffer as a nullptr.
+SG does not make any assumptions about the environment, available posix libraries or the specifics of how data should be procured or managed.
+The API is designed in a rather classical style, inspired by other C API's such as Vulkan. 
+This means that the library itself does not create, destroy or manage any allocations, instead
+it is up to the caller to provide a memory area large enough to facilitate the returned data in the places where generated geometry is returned.
+In order to make use of the geometry generation functions of this library, the user is required to call the function twice, providing the same info structure each time.
+
+1. When the generator is called the first time, a pointer to a length variable is required, so that the generator can use the information structure to determine and return a size.
+When doing this, a return status of SG_OK_RETURNED_LEN is returned by the function, signalling that using the length variable is okay. 
+2. After a length is correctly returned by the generator, it is now required that the caller procure a buffer, that is at-least the size of of length, multiplied by the size of the returned buffer elements.
+
 Examples of this can be seen throughout the library:
 
 #+begin_src c++
 SG_API_EXPORT
-enum SG_status
-sg_plane_positions(SG_IN  const SG_float width,
-				   SG_IN  const SG_float height,
-				   SG_OUT struct sg_position* dst,
-				   SG_OUT SG_size* dstlen);
+enum sg_status
+sg_indexed_sphere_vertices(SG_IN  struct sg_indexed_sphere_info* info,
+						   SG_OUT SG_size* length,
+						   SG_OUT struct sg_position* positions,
+						   SG_OUT struct sg_normal* normals,
+						   SG_OUT struct sg_texcoord* texcoords)
 #+end_src
 Ensure to read the documentation for the individual signatures to understand how they are used.
 
