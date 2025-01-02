@@ -6,7 +6,7 @@ SG is able to generate vertices, indices, normals & texture coordinates for vari
 Generate the vertex positions of a sphere:
 #+begin_src c++
 sg_indexed_sphere_info info{};
-info.radius = 1.0ff;
+info.radius = 1.0f;
 info.slices = 5;
 info.stacks = 5;
 	
@@ -16,21 +16,21 @@ sg_position* positions = (sg_position*)malloc(length * sizeof(sg_position));
 sg_cube_vertices(&cube_info, &length, positions, nullptr, nullptr);
 
 
-//Alternatively, to create buffers in in C++ using the std::vector<>
-std::vector<sg_position> positions(length);
-sg_cube_vertices(&cube_info, &length, positions.data(), nullptr, nullptr);
+//Alternatively, in C++ the  std::vector<> can be used for buffers
+std::vector<sg_normal> normals(length);
+sg_cube_vertices(&cube_info, &length, nullptr, normals.data(), nullptr);
 #+end_src
+
+** The Goal
+   
+SG's overall purpose is to provide simple rendering primitives, ready to use and integrate into rendering engines without being conserned about the chosen rendering API.
+With this library, new programmers should be able to just drop in "simple_geometry.h" and get started with primitive rendering with minimal friction.
+The library dreams of being like "stb_image.h", the centerpiese for image importing in rendering tutorials.
 
 ** Why c99
 
 The chosen way of implementating the library allows for maximum portability, and thereby usability of differernt platforms, rendering api's etc.
 SG has no external dependencies, and even allows disabling posix header dependencies as-well.
-
-** Overall Goal
-   
-SG's overall goal and purpose is to provide simple rendering primitives, ready to use and integrate into rendering engines without being conserned about the chosen rendering API.
-The library aims to be like "stb_image.h", the centerpiese for image importing in rendering tutorials.
-With this library, new programmers should be able to just drop in "simple_geometry.h" and get started with primitive rendering with minimal friction.
 
 * How to Use: Generate a Unit Cube
 
@@ -65,8 +65,9 @@ if (status != SG_OK_RETURNED_LEN)
 // Prepare buffers for the vertice data that will be generated.
 // This can be done for each of the possible outputs specified in the function
 // declaration, such as vertex- positions, normals & UV-coordinates.
-// @note the minimum memory size required is sizeof(sg_position) * length
-std::vector<sg_position> vertices(length);
+// @note the minimum memory size required is sizeof(buffer-element) * length
+std::vector<sg_position> positions(length);
+std::vector<sg_texcoord> uvs(length);
 
 // Generate the geometry vertices.
 // @note because the output data pointer points to valid memory,
@@ -75,10 +76,18 @@ std::vector<sg_position> vertices(length);
 // @note In this case we explicitly only generate the positions of the vertices,
 //       if Normals / UV-coordinates are needed, seperate buffers should be prepared
 //       and provided for those.
-status = sg_cube_vertices(&cube_info, &length, vertices.data(), nullptr, nullptr);
+status = sg_cube_vertices(&cube_info, &length, positions.data(), nullptr, uvs.data());
 
+
+// Check that the geometry is correctly generated & returned.
+// @note that alternatively, the function sg_success() can be used to
+//       convert any status into a success/failure signifying boolean.
 if (status != SG_OK_RETURNED_BUFFER)
     exit(1);
+	
+// Now it is safe to do with the returned buffers as decired.
+// Commonly returned geometry can be formatted and modified so it fits into 
+// the vertex structure of your choice.
 #+end_src
 
 * Maximum Portability Through Design
