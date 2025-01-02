@@ -378,7 +378,7 @@ sg_plane(SG_IN  const SG_float width,
  */
 SG_API_EXPORT
 enum sg_status
-sg_cube(SG_IN  const struct sq_cube_info* info,
+sg_cube(SG_IN  struct sg_cube_info* info,
 		SG_OUT SG_size* length,
 		SG_OUT struct sg_position* positions,
 		SG_OUT struct sg_normal* normals,
@@ -750,7 +750,7 @@ sg_plane(SG_IN  const SG_float width,
 
 
 enum sg_status
-sg_cube(SG_IN  const struct sq_cube_info* info,
+sg_cube(SG_IN  struct sg_cube_info* info,
 		SG_OUT SG_size* length,
 		SG_OUT struct sg_position* positions,
 		SG_OUT struct sg_normal* normals,
