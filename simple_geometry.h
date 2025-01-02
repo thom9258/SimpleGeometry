@@ -347,6 +347,7 @@ sg_plane(SG_IN  const SG_float width,
 		 SG_OUT struct sg_position* positions,
 		 SG_OUT struct sg_texcoord* texcoords);
 	
+
 /**
  * @brief Get Cube Position Vertices.
  *
@@ -379,11 +380,11 @@ sg_plane(SG_IN  const SG_float width,
  */
 SG_API_EXPORT
 enum sg_status
-sg_cube(SG_IN  struct sg_cube_info* info,
-		SG_OUT SG_size* length,
-		SG_OUT struct sg_position* positions,
-		SG_OUT struct sg_normal* normals,
-		SG_OUT struct sg_texcoord* texcoords);
+sg_cube_vertices(SG_IN  struct sg_cube_info* info,
+				 SG_OUT SG_size* length,
+				 SG_OUT struct sg_position* positions,
+				 SG_OUT struct sg_normal* normals,
+				 SG_OUT struct sg_texcoord* texcoords);
 
 /**
  * @brief Get indexed sphere vertices.
@@ -409,11 +410,11 @@ sg_cube(SG_IN  struct sg_cube_info* info,
  */
 SG_API_EXPORT
 enum sg_status
-sg_indexed_sphere(SG_IN  struct sg_indexed_sphere_info* info,
-				  SG_OUT SG_size* length,
-				  SG_OUT struct sg_position* positions,
-				  SG_OUT struct sg_normal* normals,
-				  SG_OUT struct sg_texcoord* texcoords);
+sg_indexed_sphere_vertices(SG_IN  struct sg_indexed_sphere_info* info,
+						   SG_OUT SG_size* length,
+						   SG_OUT struct sg_position* positions,
+						   SG_OUT struct sg_normal* normals,
+						   SG_OUT struct sg_texcoord* texcoords);
 
 
 /**
@@ -749,11 +750,11 @@ sg_plane(SG_IN  const SG_float width,
 
 
 enum sg_status
-sg_cube(SG_IN  struct sg_cube_info* info,
-		SG_OUT SG_size* length,
-		SG_OUT struct sg_position* positions,
-		SG_OUT struct sg_normal* normals,
-		SG_OUT struct sg_texcoord* texcoords)
+sg_cube_vertices(SG_IN  struct sg_cube_info* info,
+				 SG_OUT SG_size* length,
+				 SG_OUT struct sg_position* positions,
+				 SG_OUT struct sg_normal* normals,
+				 SG_OUT struct sg_texcoord* texcoords)
 {
 	const struct sg_position _positions[] = {
 		{-info->width, -info->height, -info->depth},
@@ -867,11 +868,11 @@ sg_cube(SG_IN  struct sg_cube_info* info,
 
 
 enum sg_status
-sg_indexed_sphere(SG_IN  struct sg_indexed_sphere_info* info,
-				  SG_OUT SG_size* length,
-				  SG_OUT struct sg_position* positions,
-				  SG_OUT struct sg_normal* normals,
-				  SG_OUT struct sg_texcoord* texcoords)
+sg_indexed_sphere_vertices(SG_IN  struct sg_indexed_sphere_info* info,
+						   SG_OUT SG_size* length,
+						   SG_OUT struct sg_position* positions,
+						   SG_OUT struct sg_normal* normals,
+						   SG_OUT struct sg_texcoord* texcoords)
 {
 	SG_size n;
 	SG_size i;

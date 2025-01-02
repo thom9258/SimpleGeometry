@@ -90,17 +90,17 @@ NormMesh cube(const sg_material mat)
 	cube_info.height = 0.5f;
 	cube_info.depth = 0.5f;
 	
-	status = sg_cube(&cube_info, &vertices_length, nullptr, nullptr, nullptr);
+	status = sg_cube_vertices(&cube_info, &vertices_length, nullptr, nullptr, nullptr);
 	if (status != SG_OK_RETURNED_LEN)
 		throw std::runtime_error("Could not get positions size");
 
 	std::vector<sg_position> positions(vertices_length);
 	std::vector<sg_normal> normals(vertices_length);
-	status = sg_cube(&cube_info,
-					 &vertices_length,
-					 positions.data(),
-					 normals.data(), 
-					 nullptr);
+	status = sg_cube_vertices(&cube_info,
+							  &vertices_length,
+							  positions.data(),
+							  normals.data(), 
+							  nullptr);
 	if (status != SG_OK_RETURNED_BUFFER)
 		throw std::runtime_error("Could not get vertices");
 
@@ -156,9 +156,10 @@ NormMesh cube(const sg_material mat)
 [[nodiscard]]
 IndexedNormMesh sphere(const sg_material mat)
 {
-	constexpr float radius = 0.5f;
-	constexpr auto slices = 16;
-	constexpr auto stacks = 16;
+	sg_indexed_sphere_info sphere_info{};
+	sphere_info.radius = 0.5f;
+	sphere_info.slices = 16;
+	sphere_info.stacks = 16;
 
 	IndexedNormMesh mesh{};
 	mesh.material = mat;
@@ -166,11 +167,11 @@ IndexedNormMesh sphere(const sg_material mat)
 	sg_status status;
 	SG_size vertices_length{0};
 	
-	status = sg_indexed_sphere(radius, slices, stacks,
-							   &vertices_length,
-							   nullptr,
-							   nullptr,
-							   nullptr);
+	status = sg_indexed_sphere_vertices(&sphere_info,
+										&vertices_length,
+										nullptr,
+										nullptr,
+										nullptr);
 
 	if (status != SG_OK_RETURNED_LEN)
 		throw std::runtime_error("Could not get positions size");
@@ -178,11 +179,11 @@ IndexedNormMesh sphere(const sg_material mat)
 	std::vector<sg_position> positions(vertices_length);
 	std::vector<sg_normal> normals(vertices_length);
 
-	status = sg_indexed_sphere(radius, slices, stacks,
-							   &vertices_length,
-							   positions.data(),
-							   normals.data(), 
-							   nullptr);
+	status = sg_indexed_sphere_vertices(&sphere_info,
+										&vertices_length,
+										positions.data(),
+										normals.data(), 
+										nullptr);
 
 	if (status != SG_OK_RETURNED_BUFFER)
 		throw std::runtime_error("Could not get vertices");
@@ -199,7 +200,7 @@ IndexedNormMesh sphere(const sg_material mat)
 		i++;
 	}
 	
-	status = sg_indexed_sphere_indices(slices, stacks,
+	status = sg_indexed_sphere_indices(&sphere_info,
 									   &mesh.indice_length,
 									   nullptr);
 	if (status != SG_OK_RETURNED_LEN)
@@ -208,7 +209,7 @@ IndexedNormMesh sphere(const sg_material mat)
 	std::vector<SG_indice> indices(mesh.indice_length);
 	mesh.indice_length = indices.size();
 
-	status = sg_indexed_sphere_indices(slices, stacks,
+	status = sg_indexed_sphere_indices(&sphere_info,
 									   &mesh.indice_length,
 									   indices.data());
 
