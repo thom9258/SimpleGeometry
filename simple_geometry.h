@@ -136,6 +136,23 @@ struct sg_normal {
 	SG_float z;
 };
 	
+struct sg_plane_info {
+	SG_float width;
+	SG_float height;
+};
+	
+struct sg_cube_info {
+	SG_float width;
+	SG_float height;
+	SG_float depth;
+};
+	
+struct sg_indexed_sphere_info {
+	SG_float radius;
+	SG_size slices;
+	SG_size stacks;
+};
+	
 struct sg_material {
 	struct sg_vec3f ambient;
 	struct sg_vec3f diffuse;
