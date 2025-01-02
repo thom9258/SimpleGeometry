@@ -71,24 +71,17 @@ class NormalDirectionDrawer
 public:
 	explicit NormalDirectionDrawer()
 	{
-		const auto vert = ShaderBuilder::file_slurp(shader_path + "normal.vert");
-		if (!vert.has_value())
-			throw std::runtime_error("could not load normal.vert");
-		
-		const auto frag = ShaderBuilder::file_slurp(shader_path + "normal.frag");
-		if (!frag.has_value())
-			throw std::runtime_error("could not load normal.frag");
-
-		auto shader = ShaderBuilder::produce(vert.value(), frag.value());
+		auto shader = ShaderBuilder::slurp_produce(shader_path + "normal.vert",
+												   shader_path + "normal.frag");
 
 		if (std::holds_alternative<InvalidShader>(shader))
 			throw std::runtime_error(std::get<InvalidShader>(shader).what);
 		m_shader = std::move(std::get<std::unique_ptr<ValidShader>>(shader));
 	}
 	
-	auto get(const glm::mat4 view,
-			 const glm::mat4 projection,
-			 const float totaltime)
+	auto operator()(const glm::mat4 view,
+					const glm::mat4 projection,
+					const float totaltime)
 	{
 		// we need to curry our shader into the returned functor, to do this
 		// we create a local copy
@@ -98,56 +91,64 @@ public:
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 				GL_THROW_ON_ERROR();
 				glBindVertexArray(draw.mesh.vao);
-				shader->activate();
-				glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-				shader->set_mat4("view", view);
-				shader->set_mat4("proj", projection);
-				shader->set_mat4("model", draw.rotator.final_model_matrix(totaltime));
-				GL_THROW_ON_ERROR();
-				glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
-				GL_THROW_ON_ERROR();
+				shader->with_activated([&] (ActivatedShader& activated) 
+				{
+					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
+					activated.set_mat4("view", view);
+					activated.set_mat4("proj", projection);
+					activated.set_mat4("model", draw.rotator.final_model_matrix(totaltime));
+					GL_THROW_ON_ERROR();
+					glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
+					GL_THROW_ON_ERROR();
+				});
 			},
 			[shader, view, projection, totaltime] (RandomRotated<IndexedNormMesh>& draw) {
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 				GL_THROW_ON_ERROR();
 				glBindVertexArray(draw.mesh.vao);
-				shader->activate();
-				glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
-				shader->set_mat4("view", view);
-				shader->set_mat4("proj", projection);
-				shader->set_mat4("model", draw.rotator.final_model_matrix(totaltime));
-				GL_THROW_ON_ERROR();
-				glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
-				GL_THROW_ON_ERROR();
+				shader->with_activated([&] (ActivatedShader& activated) 
+				{
+					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
+					activated.set_mat4("view", view);
+					activated.set_mat4("proj", projection);
+					activated.set_mat4("model", draw.rotator.final_model_matrix(totaltime));
+					GL_THROW_ON_ERROR();
+					glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
+					GL_THROW_ON_ERROR();
+				});
 			},
 			[shader, view, projection] (Model<NormMesh>& draw) {
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 				GL_THROW_ON_ERROR();
 				glBindVertexArray(draw.mesh.vao);
-				shader->activate();
-				glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-				shader->set_mat4("view", view);
-				shader->set_mat4("proj", projection);
-				shader->set_mat4("model", draw.model);
-				GL_THROW_ON_ERROR();
-				glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
-				GL_THROW_ON_ERROR();
+				shader->with_activated([&] (ActivatedShader& activated) 
+				{
+					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
+					activated.set_mat4("view", view);
+					activated.set_mat4("proj", projection);
+					activated.set_mat4("model", draw.model);
+					GL_THROW_ON_ERROR();
+					glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
+					GL_THROW_ON_ERROR();
+				});
 
 			},
 			[shader, view, projection] (Model<IndexedNormMesh>& draw) {
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 				GL_THROW_ON_ERROR();
 				glBindVertexArray(draw.mesh.vao);
-				shader->activate();
-				glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
-				shader->set_mat4("view", view);
-				shader->set_mat4("proj", projection);
-				shader->set_mat4("model", draw.model);
-				GL_THROW_ON_ERROR();
-				glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
-				GL_THROW_ON_ERROR();
+				shader->with_activated([&] (ActivatedShader& activated) 
+				{
+					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
+					activated.set_mat4("view", view);
+					activated.set_mat4("proj", projection);
+					activated.set_mat4("model", draw.model);
+					GL_THROW_ON_ERROR();
+					glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
+					GL_THROW_ON_ERROR();
+				});
 			},
 			[] (auto& draw) {
 				throw std::runtime_error(std::string("could not handle drawable type [")
@@ -163,25 +164,18 @@ class WireframeDrawer
 public:
 	explicit WireframeDrawer()
 	{
-		const auto vert = ShaderBuilder::file_slurp(shader_path + "solidcolor.vert");
-		if (!vert.has_value())
-			throw std::runtime_error("could not load solidcolor.vert");
-		
-		const auto frag = ShaderBuilder::file_slurp(shader_path + "solidcolor.frag");
-		if (!frag.has_value())
-			throw std::runtime_error("could not load solidcolor.frag");
-
-		auto shader = ShaderBuilder::produce(vert.value(), frag.value());
+		auto shader = ShaderBuilder::slurp_produce(shader_path + "solidcolor.vert",
+												   shader_path + "solidcolor.frag");
 
 		if (std::holds_alternative<InvalidShader>(shader))
 			throw std::runtime_error(std::get<InvalidShader>(shader).what);
 		m_shader = std::move(std::get<std::unique_ptr<ValidShader>>(shader));
 	}
 	
-	auto get(const glm::mat4 view,
-			 const glm::mat4 projection,
-			 const float totaltime,
-			 const glm::vec3 color)
+	auto operator()(const glm::mat4 view,
+					const glm::mat4 projection,
+					const float totaltime,
+					const glm::vec3 color)
 	{
 		// we need to curry our shader into the returned functor, to do this
 		// we create a local copy
@@ -192,62 +186,70 @@ public:
 				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 				GL_THROW_ON_ERROR();
 				glBindVertexArray(draw.mesh.vao);
-				shader->activate();
-				glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-				shader->set_mat4("view", view);
-				shader->set_mat4("proj", projection);
-				shader->set_mat4("model", draw.rotator.final_model_matrix(totaltime));
-				shader->set_vec3("color", color);
-				GL_THROW_ON_ERROR();
-				glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
-				GL_THROW_ON_ERROR();
+				shader->with_activated([&] (ActivatedShader& activated) 
+				{
+					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
+					activated.set_mat4("view", view);
+					activated.set_mat4("proj", projection);
+					activated.set_mat4("model", draw.rotator.final_model_matrix(totaltime));
+					activated.set_vec3("color", color);
+					GL_THROW_ON_ERROR();
+					glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
+					GL_THROW_ON_ERROR();
+				});
 			},
 			[shader, view, projection, totaltime, color] (RandomRotated<IndexedNormMesh>& draw) 
 			{
 				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 				GL_THROW_ON_ERROR();
 				glBindVertexArray(draw.mesh.vao);
-				shader->activate();
-				glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
-				shader->set_mat4("view", view);
-				shader->set_mat4("proj", projection);
-				shader->set_mat4("model", draw.rotator.final_model_matrix(totaltime));
-				shader->set_vec3("color", color);
-				GL_THROW_ON_ERROR();
-				glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
-				GL_THROW_ON_ERROR();
+				shader->with_activated([&] (ActivatedShader& activated) 
+				{
+					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
+					activated.set_mat4("view", view);
+					activated.set_mat4("proj", projection);
+					activated.set_mat4("model", draw.rotator.final_model_matrix(totaltime));
+					activated.set_vec3("color", color);
+					GL_THROW_ON_ERROR();
+					glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
+					GL_THROW_ON_ERROR();
+				});
 			},
 			[shader, view, projection, color] (Model<NormMesh>& draw) 
 			{
 				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 				GL_THROW_ON_ERROR();
 				glBindVertexArray(draw.mesh.vao);
-				shader->activate();
-				glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-				shader->set_mat4("view", view);
-				shader->set_mat4("proj", projection);
-				shader->set_mat4("model", draw.model);
-				shader->set_vec3("color", color);
-				GL_THROW_ON_ERROR();
-				glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
-				GL_THROW_ON_ERROR();
+				shader->with_activated([&] (ActivatedShader& activated) 
+				{
+					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
+					activated.set_mat4("view", view);
+					activated.set_mat4("proj", projection);
+					activated.set_mat4("model", draw.model);
+					activated.set_vec3("color", color);
+					GL_THROW_ON_ERROR();
+					glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
+					GL_THROW_ON_ERROR();
+				});
 			},
 			[shader, view, projection, color](Model<IndexedNormMesh>& draw) 
 			{
 				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 				GL_THROW_ON_ERROR();
 				glBindVertexArray(draw.mesh.vao);
-				shader->activate();
-				glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
-				shader->set_mat4("view", view);
-				shader->set_mat4("proj", projection);
-				shader->set_mat4("model", draw.model);
-				shader->set_vec3("color", color);
-				GL_THROW_ON_ERROR();
-				glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
-				GL_THROW_ON_ERROR();
+				shader->with_activated([&] (ActivatedShader& activated) 
+				{
+					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
+					activated.set_mat4("view", view);
+					activated.set_mat4("proj", projection);
+					activated.set_mat4("model", draw.model);
+					activated.set_vec3("color", color);
+					GL_THROW_ON_ERROR();
+					glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
+					GL_THROW_ON_ERROR();
+				});
 			},
 			[] (auto& draw) 
 			{
@@ -264,26 +266,20 @@ class PhongDrawer
 public:
 	explicit PhongDrawer()
 	{
-		const auto vert = ShaderBuilder::file_slurp(shader_path + "phong.vert");
-		if (!vert.has_value())
-			throw std::runtime_error("could not load phong vert");
-		
-		const auto frag = ShaderBuilder::file_slurp(shader_path + "phong.frag");
-		if (!frag.has_value())
-			throw std::runtime_error("could not load phong frag");
-		
-		auto shader = ShaderBuilder::produce(vert.value(), frag.value());
+
+		auto shader = ShaderBuilder::slurp_produce(shader_path + "phong.vert",
+												   shader_path + "phong.frag");
 
 		if (std::holds_alternative<InvalidShader>(shader))
 			throw std::runtime_error(std::get<InvalidShader>(shader).what);
 		m_shader = std::move(std::get<std::unique_ptr<ValidShader>>(shader));
 	}
 
-	auto get(const glm::mat4 view,
-			 const glm::mat4 projection,
-			 const float totaltime,
-			 const DirectionalLight directionallight,
-			 const std::vector<PointLight> pointlights)
+	auto operator()(const glm::mat4 view,
+					const glm::mat4 projection,
+					const float totaltime,
+					const DirectionalLight directionallight,
+					const std::vector<PointLight> pointlights)
 	{
 		// we need to curry our shader into the returned functor, to do this
 		// we create a local copy
@@ -295,30 +291,34 @@ public:
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 				GL_THROW_ON_ERROR();
 				glBindVertexArray(draw.mesh.vao);
-				shader->activate();
-				glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-				shader->set_mat4("view", view);
-				shader->set_mat4("proj", projection);
-				shader->set_mat4("model", draw.rotator.final_model_matrix(totaltime));
 				
-				shader->set_vec3("material.ambient", draw.mesh.material.ambient);
-				shader->set_vec3("material.diffuse", draw.mesh.material.diffuse);
-				shader->set_vec3("material.specular", draw.mesh.material.specular);
-				shader->set_float("material.shininess", draw.mesh.material.shininess * 128);
-				
-				shader->set_vec3("pointlight.position", pointlights[0].position);
-				shader->set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
-				shader->set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
-				shader->set_vec3("pointlight.specular", pointlights[0].material.specular);
+				shader->with_activated([&] (ActivatedShader& activated) 
+				{
+					activated.set_mat4("view", view);
+					activated.set_mat4("proj", projection);
+					activated.set_mat4("model", draw.rotator.final_model_matrix(totaltime));
+					activated.set_vec3("material.ambient", draw.mesh.material.ambient);
+					activated.set_vec3("material.diffuse", draw.mesh.material.diffuse);
+					activated.set_vec3("material.specular", draw.mesh.material.specular);
+					activated.set_float("material.shininess", draw.mesh.material.shininess * 128);
 
-				shader->set_vec3("directionallight.direction", directionallight.direction);
-				shader->set_vec3("directionallight.ambient",   directionallight.material.ambient);
-				shader->set_vec3("directionallight.diffuse",   directionallight.material.diffuse);
-				shader->set_vec3("directionallight.specular",  directionallight.material.specular);
+					activated.set_vec3("pointlight.position", pointlights[0].position);
+					activated.set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
+					activated.set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
+					activated.set_vec3("pointlight.specular", pointlights[0].material.specular);
 
-				GL_THROW_ON_ERROR();
-				glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
-				GL_THROW_ON_ERROR();
+					activated.set_vec3("directionallight.direction", directionallight.direction);
+					activated.set_vec3("directionallight.ambient",
+									   directionallight.material.ambient);
+					activated.set_vec3("directionallight.diffuse",
+									   directionallight.material.diffuse);
+					activated.set_vec3("directionallight.specular",
+									   directionallight.material.specular);
+					GL_THROW_ON_ERROR();
+					glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
+					GL_THROW_ON_ERROR();
+
+				});
 			},
 			[shader, view, projection, totaltime, directionallight, pointlights] 
 			(RandomRotated<IndexedNormMesh>& draw) 
@@ -326,31 +326,34 @@ public:
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 				GL_THROW_ON_ERROR();
 				glBindVertexArray(draw.mesh.vao);
-				shader->activate();
-				glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
-				shader->set_mat4("view", view);
-				shader->set_mat4("proj", projection);
-				shader->set_mat4("model", draw.rotator.final_model_matrix(totaltime));
-				
-				shader->set_vec3("material.ambient", draw.mesh.material.ambient);
-				shader->set_vec3("material.diffuse", draw.mesh.material.diffuse);
-				shader->set_vec3("material.specular", draw.mesh.material.specular);
-				shader->set_float("material.shininess", draw.mesh.material.shininess * 128);
-				
-				shader->set_vec3("pointlight.position", pointlights[0].position);
-				shader->set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
-				shader->set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
-				shader->set_vec3("pointlight.specular", pointlights[0].material.specular);
 
-				shader->set_vec3("directionallight.direction", directionallight.direction);
-				shader->set_vec3("directionallight.ambient",   directionallight.material.ambient);
-				shader->set_vec3("directionallight.diffuse",   directionallight.material.diffuse);
-				shader->set_vec3("directionallight.specular",  directionallight.material.specular);
-
-				GL_THROW_ON_ERROR();
-				glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
-				GL_THROW_ON_ERROR();
+				shader->with_activated([&] (ActivatedShader& activated) 
+				{
+					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
+					activated.set_mat4("view", view);
+					activated.set_mat4("proj", projection);
+					activated.set_mat4("model", draw.rotator.final_model_matrix(totaltime));
+					activated.set_vec3("material.ambient", draw.mesh.material.ambient);
+					activated.set_vec3("material.diffuse", draw.mesh.material.diffuse);
+					activated.set_vec3("material.specular", draw.mesh.material.specular);
+					activated.set_float("material.shininess", draw.mesh.material.shininess * 128);
+					activated.set_vec3("pointlight.position", pointlights[0].position);
+					activated.set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
+					activated.set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
+					activated.set_vec3("pointlight.specular", pointlights[0].material.specular);
+					activated.set_vec3("directionallight.direction", directionallight.direction);
+					activated.set_vec3("directionallight.ambient",
+									   directionallight.material.ambient);
+					activated.set_vec3("directionallight.diffuse",
+									   directionallight.material.diffuse);
+					activated.set_vec3("directionallight.specular",
+									 directionallight.material.specular);
+					
+					GL_THROW_ON_ERROR();
+					glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
+					GL_THROW_ON_ERROR();
+				});
 			},
 			[shader, view, projection, directionallight, pointlights] 
 			(Model<NormMesh>& draw) 
@@ -358,30 +361,31 @@ public:
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 				GL_THROW_ON_ERROR();
 				glBindVertexArray(draw.mesh.vao);
-				shader->activate();
-				glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-				shader->set_mat4("view", view);
-				shader->set_mat4("proj", projection);
-				shader->set_mat4("model", draw.model);
-				
-				shader->set_vec3("material.ambient", draw.mesh.material.ambient);
-				shader->set_vec3("material.diffuse", draw.mesh.material.diffuse);
-				shader->set_vec3("material.specular", draw.mesh.material.specular);
-				shader->set_float("material.shininess", draw.mesh.material.shininess * 128);
-				
-				shader->set_vec3("pointlight.position", pointlights[0].position);
-				shader->set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
-				shader->set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
-				shader->set_vec3("pointlight.specular", pointlights[0].material.specular);
-
-				shader->set_vec3("directionallight.direction", directionallight.direction);
-				shader->set_vec3("directionallight.ambient",   directionallight.material.ambient);
-				shader->set_vec3("directionallight.diffuse",   directionallight.material.diffuse);
-				shader->set_vec3("directionallight.specular",  directionallight.material.specular);
-
-				GL_THROW_ON_ERROR();
-				glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
-				GL_THROW_ON_ERROR();
+				shader->with_activated([&] (ActivatedShader& activated) 
+				{
+					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
+					activated.set_mat4("view", view);
+					activated.set_mat4("proj", projection);
+					activated.set_mat4("model", draw.model);
+					activated.set_vec3("material.ambient", draw.mesh.material.ambient);
+					activated.set_vec3("material.diffuse", draw.mesh.material.diffuse);
+					activated.set_vec3("material.specular", draw.mesh.material.specular);
+					activated.set_float("material.shininess", draw.mesh.material.shininess * 128);
+					activated.set_vec3("pointlight.position", pointlights[0].position);
+					activated.set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
+					activated.set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
+					activated.set_vec3("pointlight.specular", pointlights[0].material.specular);
+					activated.set_vec3("directionallight.direction", directionallight.direction);
+					activated.set_vec3("directionallight.ambient",   directionallight.material.ambient);
+					activated.set_vec3("directionallight.diffuse",
+									   directionallight.material.diffuse);
+					activated.set_vec3("directionallight.specular",
+									   directionallight.material.specular);
+					
+					GL_THROW_ON_ERROR();
+					glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
+					GL_THROW_ON_ERROR();
+				});
 			},
 			[shader, view, projection, directionallight, pointlights] 
 			(Model<IndexedNormMesh>& draw) 
@@ -389,31 +393,32 @@ public:
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 				GL_THROW_ON_ERROR();
 				glBindVertexArray(draw.mesh.vao);
-				shader->activate();
-				glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
-				shader->set_mat4("view", view);
-				shader->set_mat4("proj", projection);
-				shader->set_mat4("model", draw.model);
-				
-				shader->set_vec3("material.ambient", draw.mesh.material.ambient);
-				shader->set_vec3("material.diffuse", draw.mesh.material.diffuse);
-				shader->set_vec3("material.specular", draw.mesh.material.specular);
-				shader->set_float("material.shininess", draw.mesh.material.shininess * 128);
-				
-				shader->set_vec3("pointlight.position", pointlights[0].position);
-				shader->set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
-				shader->set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
-				shader->set_vec3("pointlight.specular", pointlights[0].material.specular);
-
-				shader->set_vec3("directionallight.direction", directionallight.direction);
-				shader->set_vec3("directionallight.ambient",   directionallight.material.ambient);
-				shader->set_vec3("directionallight.diffuse",   directionallight.material.diffuse);
-				shader->set_vec3("directionallight.specular",  directionallight.material.specular);
-
-				GL_THROW_ON_ERROR();
-				glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
-				GL_THROW_ON_ERROR();
+				shader->with_activated([&] (ActivatedShader& activated) 
+				{
+					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
+					activated.set_mat4("view", view);
+					activated.set_mat4("proj", projection);
+					activated.set_mat4("model", draw.model);
+					activated.set_vec3("material.ambient", draw.mesh.material.ambient);
+					activated.set_vec3("material.diffuse", draw.mesh.material.diffuse);
+					activated.set_vec3("material.specular", draw.mesh.material.specular);
+					activated.set_float("material.shininess", draw.mesh.material.shininess * 128);
+					activated.set_vec3("pointlight.position", pointlights[0].position);
+					activated.set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
+					activated.set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
+					activated.set_vec3("pointlight.specular", pointlights[0].material.specular);
+					activated.set_vec3("directionallight.direction", directionallight.direction);
+					activated.set_vec3("directionallight.ambient",
+									   directionallight.material.ambient);
+					activated.set_vec3("directionallight.diffuse",
+									   directionallight.material.diffuse);
+					activated.set_vec3("directionallight.specular",
+									   directionallight.material.specular);
+					GL_THROW_ON_ERROR();
+					glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
+					GL_THROW_ON_ERROR();
+				});
 			},
 			[] (auto& draw) 
 			{
@@ -579,7 +584,8 @@ int main(int argc, char** argv)
 		glEnable(GL_DEPTH_TEST);
 		
 	
-		const auto draw_world = [&] (auto drawer) {
+		const auto draw_world = [&] (auto drawer) 
+		{
 			std::visit(drawer, floor);
 			std::visit(drawer, hill);
 			
@@ -588,14 +594,14 @@ int main(int argc, char** argv)
 		};
 		
 		if (draw_type == DrawType::NormalDirection) {
-			draw_world(normal_direction_drawer.get(camera->view(), projection, totaltime));
+				draw_world(normal_direction_drawer(camera->view(), projection, totaltime));
 		}
 		else if (draw_type == DrawType::Wireframe) {
 			const auto red = glm::vec3(1.0f, 0.0f, 0.0f);
-			draw_world(wireframe_drawer.get(camera->view(),
-											projection,
-											totaltime,
-											red));
+			draw_world(wireframe_drawer(camera->view(),
+										projection,
+										totaltime,
+										red));
 		}
 		else {
 			const std::vector<PointLight> pointlights{
@@ -603,15 +609,14 @@ int main(int argc, char** argv)
 			};
 			const auto directionallight = DirectionalLight(glm::vec3(-0.2f, -1.0f, -0.3f),
 														   sg_material_default_flat_white());
-
-			draw_world(phong_drawer.get(camera->view(),
-										projection,
-										totaltime,
-										directionallight,
-										pointlights));
+			
+			draw_world(phong_drawer(camera->view(),
+									projection,
+									totaltime,
+									directionallight,
+									pointlights));
 		}
-		
-
+	
 		SDL_GL_SwapWindow(window);
 		GL_THROW_ON_ERROR();
 

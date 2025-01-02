@@ -13,10 +13,11 @@
 #include <optional>
 #include <variant>
 #include <array>
-#include <string>
+#include <string_view>
 #include <memory>
 #include <stdexcept>
 #include <filesystem>
+#include <functional>
 #include <fstream>
 
 #include "Error.hpp"
@@ -24,6 +25,7 @@
 class InvalidShader {
 public:
 	enum class Step {
+		FileLoad,
 		Vertex,
 		Fragment,
 		Program,
@@ -40,36 +42,44 @@ public:
 	const std::string what;
 };
 
-class ValidShader {
+class ActivatedShader 
+{
 public:
+	explicit ActivatedShader(GLuint program) noexcept;
+	~ActivatedShader();
+
 	using Uniform = std::optional<GLuint>;
+	[[nodiscard]]
+	Uniform uniform(const std::string_view name) noexcept;
+
+	void set_mat4(const std::string_view name, const glm::mat4 value);
+	void set_int(const std::string_view name, const int value);
+	void set_float(const std::string_view name, const float value);
+	void set_vec3(const std::string_view name, const glm::vec3 value);
+	void set_vec3(const std::string_view name, const float x, const float y, const float z);
+	void set_vec4(const std::string_view name, const glm::vec4 value);
+	void set_vec4(const std::string_view name,
+				  const float x,
+				  const float y,
+				  const float z,
+				  const float w);
+private:
+	GLuint m_activated_program;
+};
 	
+
+class ValidShader 
+{
+public:
     ValidShader(const GLuint program) noexcept;
     ~ValidShader(void) noexcept;
 	
 	ValidShader(const ValidShader&) = delete;
 	ValidShader operator=(const ValidShader&) = delete;
 
-	[[nodiscard]]
-	GLuint program() noexcept;
-
-	[[nodiscard]]
-    Uniform uniform(const std::string& name) noexcept;
-	[[nodiscard]]
-	Uniform uniform_block_index(const std::string &name) noexcept;
-    void activate() noexcept;
-	void set_mat4(const std::string &name, const glm::mat4 value);
-	void set_int(const std::string &name, const int value);
-	void set_float(const std::string &name, const float value);
-	void set_vec3(const std::string &name, const glm::vec3 value);
-	void set_vec3(const std::string &name, const float x, const float y, const float z);
-	void set_vec4(const std::string &name, const glm::vec4 value);
-	void set_vec4(const std::string &name,
-				  const float x,
-				  const float y,
-				  const float z,
-				  const float w);
-
+	using DoWithActivatedShader = std::function<void(ActivatedShader&)>;
+	void with_activated(DoWithActivatedShader&& do_with);
+	
 private:
     GLuint m_program{0};
 };
@@ -80,15 +90,39 @@ class ShaderBuilder
 {
 public:
 	[[nodiscard]]
-	static Shader produce(const char* vertex_source, const char* fragment_source) noexcept;
+	static Shader produce(const char* vertex_source,
+						  const char* fragment_source) noexcept;
 
 	[[nodiscard]]
-	static Shader produce(const std::string& vertex_source, const std::string& fragment_source) noexcept;
+	static Shader produce(const std::string& vertex_source,
+						  const std::string& fragment_source) noexcept;
+
+	[[nodiscard]]
+	static Shader slurp_produce(const std::filesystem::path& vertex_path,
+								const std::filesystem::path& fragment_path) noexcept;
+
 
 	[[nodiscard]]	
 	static std::optional<std::string> file_slurp(const std::filesystem::path& path) noexcept;
 };
 
+Shader ShaderBuilder::slurp_produce(const std::filesystem::path& vertex_path,
+									const std::filesystem::path& fragment_path) noexcept
+{
+	const auto vertex_source = file_slurp(vertex_path);
+	if (!vertex_source)
+		return InvalidShader(InvalidShader::Step::FileLoad,
+							 std::string("Could not Load vertex source from path:")
+							 + vertex_path.string());
+
+	const auto fragment_source = file_slurp(fragment_path);
+	if (!fragment_source)
+		return InvalidShader(InvalidShader::Step::FileLoad,
+							 std::string("Could not Load fragment source from path:")
+							 + fragment_path.string());
+
+	return produce(*vertex_source, *fragment_source);
+}
 
 Shader ShaderBuilder::produce(const std::string& vertex_source, const std::string& fragment_source) noexcept
 {
@@ -169,87 +203,85 @@ ValidShader::~ValidShader(void) noexcept
     glDeleteShader(m_program);
 }
 	
-GLuint ValidShader::program() noexcept
+void ValidShader::with_activated(DoWithActivatedShader&& do_with)
 {
-    return m_program;
+	auto activated = ActivatedShader(m_program);
+	std::invoke(do_with, activated);
 }
 
-void ValidShader::activate() noexcept
+ActivatedShader::ActivatedShader(const GLuint program) noexcept
 {
-    glUseProgram(m_program);
+    glUseProgram(program);
 	GL_THROW_ON_ERROR();
+	m_activated_program = program;
 }
 
-ValidShader::Uniform ValidShader::uniform(const std::string &name) noexcept
+ActivatedShader::~ActivatedShader()
+{
+    glUseProgram(0);
+}
+
+ActivatedShader::Uniform ActivatedShader::uniform(const std::string_view name) noexcept
 {         
-    const auto location = glGetUniformLocation(m_program, name.c_str());
+    const auto location = glGetUniformLocation(m_activated_program, name.data());
     if (location == -1)
         return {};
     return {location};
 }
 	
-ValidShader::Uniform ValidShader::uniform_block_index(const std::string &name) noexcept
-{
-	const auto location = glGetUniformBlockIndex(m_program, name.c_str());
-    if (location == GL_INVALID_INDEX) {
-        return std::nullopt;
-	}
-	return location;
-}
-
-void ValidShader::set_mat4(const std::string &name, const glm::mat4 value) 
+void ActivatedShader::set_mat4(const std::string_view name, const glm::mat4 value) 
 {
     const auto location = uniform(name);
     if (!location)
-		throw std::runtime_error(name + " uniform does not exist!");
+		throw std::runtime_error(std::string(name) + " uniform does not exist!");
     glUniformMatrix4fv(*location, 1, GL_FALSE, glm::value_ptr(value)); 
 }
 
-void ValidShader::set_int(const std::string &name, const int value) 
+void ActivatedShader::set_int(const std::string_view name, const int value) 
 {
     const auto location = uniform(name);
     if (!location)
-		throw std::runtime_error("Uniform '" + name + "' does not exist!");
+		throw std::runtime_error(std::string(name) + " uniform does not exist!");
     glUniform1i(*location, value); 
 }
 
-void ValidShader::set_float(const std::string &name, const float value) 
+void ActivatedShader::set_float(const std::string_view name, const float value) 
 {
     const auto location = uniform(name);
     if (!location)
-		throw std::runtime_error("Uniform '" + name + "' does not exist!");
+		throw std::runtime_error(std::string(name) + " uniform does not exist!");
     glUniform1f(*location, value); 
 }
 
-void ValidShader::set_vec3(const std::string &name, const glm::vec3 value) 
+void ActivatedShader::set_vec3(const std::string_view name, const glm::vec3 value) 
 {
     const auto location = uniform(name);
     if (!location)
-		throw std::runtime_error("Uniform '" + name + "' does not exist!");
+		throw std::runtime_error(std::string(name) + " uniform does not exist!");
     glUniform3f(*location, value.x, value.y, value.z); 
 }
 
-void ValidShader::set_vec3(const std::string &name,
-						   const float x,
-						   const float y,
-						   const float z)
+void ActivatedShader::set_vec3(const std::string_view name,
+							   const float x,
+							   const float y,
+							   const float z)
 {
 	set_vec3(name, glm::vec3(x, y, z));
 }
 
-void ValidShader::set_vec4(const std::string &name, const glm::vec4 value) 
+void ActivatedShader::set_vec4(const std::string_view name, const glm::vec4 value) 
 {
     const auto location = uniform(name);
     if (!location)
-		throw std::runtime_error("Uniform '" + name + "' does not exist!");
+		throw std::runtime_error(std::string(name) + " uniform does not exist!");
     glUniform4f(*location, value.x, value.y, value.z, value.w); 
 }
 
-void ValidShader::set_vec4(const std::string &name,
-						   const float x,
-						   const float y,
-						   const float z,
-						   const float w)
+void ActivatedShader::set_vec4(const std::string_view name,
+							   const float x,
+							   const float y,
+							   const float z,
+							   const float w)
 {
 	set_vec4(name, glm::vec4(x, y, z, w));
 }
