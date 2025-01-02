@@ -378,9 +378,7 @@ sg_plane(SG_IN  const SG_float width,
  */
 SG_API_EXPORT
 enum sg_status
-sg_cube(SG_IN  const SG_float width,
-		SG_IN  const SG_float height,
-		SG_IN  const SG_float depth,
+sg_cube(SG_IN  const struct sq_cube_info* info,
 		SG_OUT SG_size* length,
 		SG_OUT struct sg_position* positions,
 		SG_OUT struct sg_normal* normals,
@@ -752,32 +750,54 @@ sg_plane(SG_IN  const SG_float width,
 
 
 enum sg_status
-sg_cube(SG_IN  const SG_float width,
-		SG_IN  const SG_float height,
-		SG_IN  const SG_float depth,
+sg_cube(SG_IN  const struct sq_cube_info* info,
 		SG_OUT SG_size* length,
 		SG_OUT struct sg_position* positions,
 		SG_OUT struct sg_normal* normals,
 		SG_OUT struct sg_texcoord* texcoords)
 {
 	const struct sg_position _positions[] = {
-		{-width, -height, -depth}, { width, -height, -depth}, { width,  height, -depth},
-		{ width,  height, -depth}, {-width,  height, -depth}, {-width, -height, -depth},
+		{-info->width, -info->height, -info->depth},
+		{ info->width, -info->height, -info->depth},
+		{ info->width,  info->height, -info->depth},
+		{ info->width,  info->height, -info->depth},
+		{-info->width,  info->height, -info->depth},
+		{-info->width, -info->height, -info->depth},
 
-		{-width, -height,  depth}, { width, -height,  depth}, { width,  height,  depth},
-		{ width,  height,  depth}, {-width,  height,  depth}, {-width, -height,  depth},
+		{-info->width, -info->height,  info->depth},
+		{ info->width, -info->height,  info->depth},
+		{ info->width,  info->height,  info->depth},
+		{ info->width,  info->height,  info->depth}, 
+		{-info->width,  info->height,  info->depth},
+		{-info->width, -info->height,  info->depth},
 
-		{-width,  height,  depth}, {-width,  height, -depth}, {-width, -height, -depth},
-		{-width, -height, -depth}, {-width, -height,  depth}, {-width,  height,  depth},
+		{-info->width,  info->height,  info->depth},
+		{-info->width,  info->height, -info->depth},
+		{-info->width, -info->height, -info->depth},
+		{-info->width, -info->height, -info->depth},
+		{-info->width, -info->height,  info->depth},
+		{-info->width,  info->height,  info->depth},
 
-		{ width,  height,  depth}, { width,  height, -depth}, { width, -height, -depth},
-		{ width, -height, -depth}, { width, -height,  depth}, { width,  height,  depth},
+		{ info->width,  info->height,  info->depth},
+		{ info->width,  info->height, -info->depth},
+		{ info->width, -info->height, -info->depth},
+		{ info->width, -info->height, -info->depth},
+		{ info->width, -info->height,  info->depth},
+		{ info->width,  info->height,  info->depth},
 
-		{-width, -height, -depth}, { width, -height, -depth}, { width, -height,  depth},
-		{ width, -height,  depth}, {-width, -height,  depth}, {-width, -height, -depth},
+		{-info->width, -info->height, -info->depth},
+		{ info->width, -info->height, -info->depth},
+		{ info->width, -info->height,  info->depth},
+		{ info->width, -info->height,  info->depth},
+		{-info->width, -info->height,  info->depth},
+		{-info->width, -info->height, -info->depth},
 
-		{-width,  height, -depth}, { width,  height, -depth}, { width,  height,  depth},
-		{ width,  height,  depth}, {-width,  height,  depth}, {-width,  height, -depth},
+		{-info->width,  info->height, -info->depth},
+		{ info->width,  info->height, -info->depth},
+		{ info->width,  info->height,  info->depth},
+		{ info->width,  info->height,  info->depth},
+		{-info->width,  info->height,  info->depth},
+		{-info->width,  info->height, -info->depth},
 	};
 	const struct sg_normal _normals[] = {
 		{0.0f,  0.0f, -1.0f}, {0.0f,  0.0f, -1.0f},  {0.0f,  0.0f, -1.0f}, 
