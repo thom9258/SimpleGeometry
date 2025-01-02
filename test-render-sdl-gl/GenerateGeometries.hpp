@@ -84,13 +84,19 @@ NormMesh cube(const sg_material mat)
 
 	sg_status status;
 	SG_size vertices_length{0};
-	status = sg_cube(0.5f, 0.5f, 0.5f, &vertices_length, nullptr, nullptr, nullptr);
+	
+	sg_cube_info cube_info{};
+	cube_info.width = 0.5f;
+	cube_info.height = 0.5f;
+	cube_info.depth = 0.5f;
+	
+	status = sg_cube(&cube_info, &vertices_length, nullptr, nullptr, nullptr);
 	if (status != SG_OK_RETURNED_LEN)
 		throw std::runtime_error("Could not get positions size");
 
 	std::vector<sg_position> positions(vertices_length);
 	std::vector<sg_normal> normals(vertices_length);
-	status = sg_cube(0.5f, 0.5f, 0.5f,
+	status = sg_cube(&cube_info,
 					 &vertices_length,
 					 positions.data(),
 					 normals.data(), 
