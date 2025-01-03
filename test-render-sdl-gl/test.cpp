@@ -579,10 +579,8 @@ int main(int argc, char** argv)
 		 * Draw
 		 */
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		GL_THROW_ON_ERROR();
-
 		glEnable(GL_DEPTH_TEST);
-		
+		GL_THROW_ON_ERROR();
 	
 		const auto draw_world = [&] (auto drawer) 
 		{

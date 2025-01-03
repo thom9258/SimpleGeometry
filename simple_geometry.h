@@ -35,15 +35,9 @@ extern "C" {
 #  define SG_UNREFERENCED(VAR) (void)(VAR)
 #endif
 	
-#ifndef	SG_IN
-#  define SG_IN
-#endif
-#ifndef	SG_OUT
-#  define SG_OUT
-#endif
-#ifndef	SG_INOUT
-#  define SG_INOUT
-#endif
+#define SG_IN
+#define SG_OUT
+#define SG_INOUT
 	
 #ifndef	SG_nullptr
 #  ifdef __cplusplus
@@ -98,7 +92,7 @@ extern "C" {
 
 enum sg_status {
 	SG_OK_RETURNED_BUFFER,
-	SG_OK_RETURNED_LEN,
+	SG_OK_RETURNED_LENGTH,
 	SG_OK_COPIED_TO_DST,
 
 	SG_ERR_NULLPTR_INPUT,
@@ -137,9 +131,11 @@ struct sg_normal {
 	SG_float z;
 };
 	
-struct sg_plane_info {
+struct sg_indexed_plane_info {
 	SG_float width;
 	SG_float height;
+	SG_size width_subdivisions;
+	SG_size height_subdivisions;
 };
 	
 struct sg_cube_info {
@@ -154,6 +150,13 @@ struct sg_indexed_sphere_info {
 	SG_size stacks;
 };
 	
+struct sg_strided_blockcopy_source_info {
+	void* ptr;
+	SG_size block_size;
+	SG_size block_count;
+	SG_size stride;
+};
+	
 struct sg_material {
 	struct sg_vec3f ambient;
 	struct sg_vec3f diffuse;
@@ -161,32 +164,14 @@ struct sg_material {
 	SG_float shininess;
 };
 
-/**
- * @brief Check if returned SG_STATUS indicates success.
- *
- * A simplified summary of the return code, if ignoring any
- * specific error/success code is wanted.
- */
 SG_API_EXPORT
 SG_bool
 sg_success(SG_IN const enum sg_status status); 
 	
-/**
- * @brief Check if returned SG_STATUS indicates success.
- *
- * A simplified summary of the return code, if ignoring any
- * specific error/success code is wanted.
- */
-
 SG_API_EXPORT
 const char*
 sg_status_string(SG_IN const enum sg_status status);
 	
-/**
- * @brief Copy memory.
- *
- * Copies 'n' bytes of memory from 'src' to 'dst'.
- */
 SG_API_EXPORT
 enum sg_status
 sg_memcpy(SG_IN const void* src,
@@ -262,11 +247,8 @@ sg_memcpy(SG_IN const void* src,
  */
 SG_API_EXPORT
 enum sg_status
-sg_strided_blockcopy(SG_IN  const SG_size src_block_size,
-					 SG_IN  const SG_size src_stride,
-					 SG_IN  const SG_size src_block_count,
-					 SG_IN  const void* src,
-					 SG_IN  const SG_size dst_stride,
+sg_strided_blockcopy(SG_IN  struct sg_strided_blockcopy_source_info const* source,
+					 SG_IN  const SG_size stride,
 					 SG_OUT void* dst);
 	
 SG_API_EXPORT
@@ -300,84 +282,26 @@ SG_API_EXPORT
 struct sg_normal
 sg_normal_from_vec3f(SG_IN const struct sg_vec3f v);
 	
-/**
- * @brief Calculate flat normals for vertices.
- */
 SG_API_EXPORT
 enum sg_status
 sg_calculate_flat_normals(SG_IN  const struct sg_position* vertices,
 						  SG_IN  const SG_size vertices_len,
 						  SG_OUT struct sg_normal* normals);
 
-
-/**
- * @brief Get Plane Position Vertices.
- *
- * Call Signature 1:
- * To get the length of the required memory buffer, call this
- * function with 'dst' set to SG_nullptr.
- * When this is done, specified 'width' & 'height' is unused.
-
- * Call Signature 2:
- * To get the vertices, provide a buffer of *atleast* the
- * returned length as gotten when using call signature 1.
- * the provided 'width' & 'height' is used to calculate the
- * size of the returned plane.
- *
- * @return a return code indicating the status of the use.
- */
 SG_API_EXPORT
 enum sg_status
-sg_plane_positions(SG_IN  const SG_float width,
-				   SG_IN  const SG_float height,
-				   SG_OUT struct sg_position* dst,
-				   SG_OUT SG_size* dstlen);
-
-
-SG_API_EXPORT
-enum sg_status
-sg_plane_texcoords(SG_OUT struct sg_texcoord* dst,
-				   SG_OUT SG_size* dstlen);
+sg_indexed_plane_vertices(SG_IN  struct sg_indexed_plane_info const* plane,
+						  SG_OUT SG_size* length,
+						  SG_OUT struct sg_position* positions,
+						  SG_OUT struct sg_normals* normals,
+						  SG_OUT struct sg_texcoords* texcoords);
 	
 SG_API_EXPORT
 enum sg_status
-sg_plane(SG_IN  const SG_float width,
-		 SG_IN  const SG_float height,
-		 SG_OUT SG_size* length,
-		 SG_OUT struct sg_position* positions,
-		 SG_OUT struct sg_texcoord* texcoords);
-	
+sg_indexed_plane_indices(SG_IN  struct sg_indexed_plane_info const* plane,
+						 SG_OUT SG_size* length,
+						 SG_OUT SG_indice* indices);
 
-/**
- * @brief Get Cube Position Vertices.
- *
- * @param width      Width of the returned cube.
- * @param height     Height of the returned cube.
- * @param depth      Depth of the returned cube.
- * @param length     Pointer to the output minimim length of 
- *                   'positions', 'normals' & 'texcoords' buffers.
- * @param positions  Pointer to the output position buffer to fill.
- * @param normals    Pointer to the output normal buffer to fill.
- * @param texcoords  Pointer to the output texcoord buffer to fill.
- *
- * Call Signature 1:
- *   To get the minimum length of the output buffers.
- *   call this function with 'positions', 'normals' & 'texcoords'
- *   buffers set to 'SG_nullptr'.
- *
- * Call Signature 2:
- *   To get 'positions', 'normals' & 'texcoords', provide buffers of 
- *   *at-least* the returned 'dstlen' as is retrieved when using
- *   call signature 1.
- *   the provided 'width', 'height' & 'depth' is used to specify the
- *   dimensions of the returned cube.
- *
- * @see struct sg_position
- * @see struct sg_normal
- * @see struct sg_texcoord
- *
- * @return a return code indicating the status of the usage.
- */
 SG_API_EXPORT
 enum sg_status
 sg_cube_vertices(SG_IN  struct sg_cube_info* info,
@@ -386,28 +310,6 @@ sg_cube_vertices(SG_IN  struct sg_cube_info* info,
 				 SG_OUT struct sg_normal* normals,
 				 SG_OUT struct sg_texcoord* texcoords);
 
-/**
- * @brief Get indexed sphere vertices.
- *
- * Call Signature 1:
- * To get the length of the required memory buffers, point 'len'
- * to a valid variable, then set 'positions', 'normals' & 'texcoords'
- * to 'SG_nullptr'.
- * When this is done, ensure specified 'slices' & 'stacks' are set
- * as these determine the returned length.
- *
- * Call Signature 2:
- * To get the vertices, provide 'positions', 'normals' & 'texcoords'
- * buffers of *atleast* the returned length as gotten when using
- * call signature 1.
- * If any of the returnable vertex data buffers are not needed,
- * provide 'SG_nullptr' instead.
- *
- * Original Reference:
- * https://www.3dgep.com/texturing-and-lighting-with-opengl-and-glsl/#Creating_a_Sphere
- *
- * @return a return code indicating the status of the use.
- */
 SG_API_EXPORT
 enum sg_status
 sg_indexed_sphere_vertices(SG_IN  struct sg_indexed_sphere_info* info,
@@ -416,68 +318,28 @@ sg_indexed_sphere_vertices(SG_IN  struct sg_indexed_sphere_info* info,
 						   SG_OUT struct sg_normal* normals,
 						   SG_OUT struct sg_texcoord* texcoords);
 
-
-/**
- * @brief Get indexed sphere vertices.
- *
- * Call Signature 1:
- * To get the length of the required memory buffer, call this
- * function with 'len' pointing to a valid value, and 'indices'
- * pointint to 'SG_nullptr'.
- * When this is done, ensure specified 'slices' & 'stacks' are
- * set as these determine the returned length.
- *
- * Call Signature 2:
- * To get the 'indices' provide a buffer of *atleast* the
- * returned length as gotten when using call signature 1.
- *
- * Original Reference:
- * https://www.3dgep.com/texturing-and-lighting-with-opengl-and-glsl/#Creating_a_Sphere
- *
- * @return a return code indicating the status of the use.
- */
 SG_API_EXPORT
 enum sg_status
 sg_indexed_sphere_indices(SG_IN  struct sg_indexed_sphere_info* info,
 						  SG_OUT SG_size* len,
 						  SG_OUT SG_indice* indices);
 
-
-/**
- * @brief Get Material properties for 'gold'.
- */
 SG_API_EXPORT
 struct sg_material
 sg_material_gold(); 
 
-/**
- * @brief Get Material properties for 'obsidian'.
- */
 SG_API_EXPORT
 struct sg_material
 sg_material_obsidian(); 
 	
-/**
- * @brief Get Material properties for 'ruby'.
- */
 SG_API_EXPORT
 struct sg_material
 sg_material_ruby(); 
 
-/**
- * @brief Get Material properties for 'emerald'.
- */
 SG_API_EXPORT
 struct sg_material
 sg_material_emerald(); 
 
-
-	
-/**
- * @brief Get Material properties for 'default flat white'.
- * This color emulates the default white color material for
- * for primitive objects used in common editors and engines.
- */
 SG_API_EXPORT
 struct sg_material
 sg_material_default_flat_white();
@@ -493,7 +355,7 @@ sg_success(SG_IN const enum sg_status status)
 {
 	switch (status) {
 	case SG_OK_RETURNED_BUFFER:
-	case SG_OK_RETURNED_LEN:
+	case SG_OK_RETURNED_LENGTH:
 	case SG_OK_COPIED_TO_DST:
 		return SG_true;
 	default:
@@ -506,7 +368,7 @@ sg_status_string(SG_IN const enum sg_status status)
 {
 	switch (status) {
 	case SG_OK_RETURNED_BUFFER:                return "SG_OK_RETURNED_BUFFER"; 
-	case SG_OK_RETURNED_LEN:                   return "SG_OK_RETURNED_LEN";
+	case SG_OK_RETURNED_LENGTH:                return "SG_OK_RETURNED_LENGTH";
 	case SG_OK_COPIED_TO_DST:                  return "SG_OK_COPIED_TO_DST";
 	case SG_ERR_NULLPTR_INPUT:                 return "SG_ERR_NULLPTR_INPUT";
 	case SG_ERR_ZEROSIZE_INPUT:                return "SG_ERR_ZEROSIZE_INPUT";
@@ -537,10 +399,7 @@ sg_memcpy(SG_IN  const void* src,
 }
 
 enum sg_status
-sg_strided_blockcopy(SG_IN  const SG_size src_block_size,
-					 SG_IN  const SG_size src_stride,
-					 SG_IN  const SG_size src_block_count,
-					 SG_IN  const void* src,
+sg_strided_blockcopy(SG_IN  struct sg_strided_blockcopy_source_info const* source,
 					 SG_IN  const SG_size dst_stride,
 					 SG_OUT void* dst)
 {
@@ -548,17 +407,20 @@ sg_strided_blockcopy(SG_IN  const SG_size src_block_size,
 	char* currsrc;
 	char* currdst;
 	enum sg_status copystatus;
-	if (src == SG_nullptr || dst == SG_nullptr)
+
+	if (source == SG_nullptr)
+		return SG_ERR_INFO_NOT_PROVIDED;
+	if (source->ptr == SG_nullptr || dst == SG_nullptr)
 		return SG_ERR_NULLPTR_INPUT;
-	if (dst_stride < 1 || src_block_size < 1 || src_block_count < 1)
+	if (dst_stride < 1 || source->block_size < 1 || source->block_count < 1)
 		return SG_ERR_ZEROSIZE_INPUT;
-	if (dst_stride < src_block_size)
+	if (dst_stride < source->block_size)
 		return SG_ERR_SRCBLKSIZE_LESSTHAN_DSTSTRIDE;
 	
-	for (i = 0; i < src_block_count; i++) {
-		currsrc = ((char*)src) + (i * src_stride);
+	for (i = 0; i < source->block_count; i++) {
+		currsrc = ((char*)source->ptr) + (i * source->stride);
 		currdst = ((char*)dst) + (i * dst_stride);
-		copystatus = sg_memcpy(currsrc, src_block_size, currdst);
+		copystatus = sg_memcpy(currsrc, source->block_size, currdst);
 		if (!sg_success(copystatus))
 			return copystatus;
 	}
@@ -672,80 +534,36 @@ sg_calculate_flat_normals(SG_IN  const struct sg_position* vertices,
 
 	return SG_OK_RETURNED_BUFFER;
 }
-	
-enum sg_status
-sg_plane_positions(SG_IN  const SG_float width,
-				   SG_IN  const SG_float height,
-				   SG_OUT struct sg_position* dst,
-				   SG_OUT SG_size* dstlen)
-{
-	const struct sg_position positions[] = {
-        {-width, -height, 0.0f},
-        { width, -height, 0.0f},
-        { width,  height, 0.0f},
-		
-        { width,  height, 0.0f},
-        {-width,  height, 0.0f},
-        {-width, -height, 0.0f}
-    };
 
-	if (dstlen == SG_nullptr)
+enum sg_status
+sg_indexed_plane_vertices(SG_IN  struct sg_indexed_plane_info const* plane,
+						  SG_OUT SG_size* length,
+						  SG_OUT struct sg_position* positions,
+						  SG_OUT struct sg_normals* normals,
+						  SG_OUT struct sg_texcoords* texcoords)
+{
+	if (plane == SG_nullptr)
+		return SG_ERR_INFO_NOT_PROVIDED;
+	if (length == SG_nullptr)
 		return SG_ERR_DSTLEN_NOT_PROVIDED;
-
-	*dstlen = SG_ARRAY_LEN(positions);
-	if (dst == SG_nullptr)
-		return SG_OK_RETURNED_LEN;
 	
-	return sg_memcpy(positions,
-					 SG_ARRAY_MEMSIZE(positions),
-					 dst);
-}
-
-enum sg_status
-sg_plane_texcoords(SG_OUT struct sg_texcoord* dst,
-				   SG_OUT SG_size* dstlen)
-{
-	const struct sg_texcoord out[] = {
-		{1.0f, 0.0f},
-		{0.0f, 0.0f},
-		{0.0f, 1.0f},
-
-		{0.0f, 1.0f},
-		{1.0f, 1.0f},
-		{1.0f, 0.0f},
-	};
-	const SG_size outlen = SG_ARRAY_LEN(out);
-	SG_size i;
-		if (dstlen == SG_nullptr)
-		return SG_ERR_DSTLEN_NOT_PROVIDED;
-
-	*dstlen = outlen;
-	if (dst == SG_nullptr)
-		return SG_OK_RETURNED_LEN;
-	
-	for (i = 0; i < outlen; ++i) {
-		dst[i] = out[i];
-	}
-
-	return SG_OK_RETURNED_BUFFER;
-}
-
-
-enum sg_status
-sg_plane(SG_IN  const SG_float width,
-		 SG_IN  const SG_float height,
-		 SG_OUT SG_size* length,
-		 SG_OUT struct sg_position* positions,
-		 SG_OUT struct sg_texcoord* texcoords)
-{
-	SG_ASSERT_NOT_IMPLEMENTED("sg_plane");
-	SG_UNREFERENCED(width);
-	SG_UNREFERENCED(height);
-	SG_UNREFERENCED(length);
+	SG_ASSERT_NOT_IMPLEMENTED("sg_indexed_plane_vertices");
 	SG_UNREFERENCED(positions);
+	SG_UNREFERENCED(normals);
 	SG_UNREFERENCED(texcoords);
 	return SG_ERR_NOT_IMPLEMENTED_YET;
+}
 
+enum sg_status
+sg_indexed_plane_indices(SG_IN  struct sg_indexed_plane_info const* plane,
+						 SG_OUT SG_size* length,
+						 SG_OUT SG_indice* indices)
+{
+	SG_ASSERT_NOT_IMPLEMENTED("sg_indexed_plane_indices");
+	SG_UNREFERENCED(plane);
+	SG_UNREFERENCED(length);
+	SG_UNREFERENCED(indices);
+	return SG_ERR_NOT_IMPLEMENTED_YET;
 }
 
 
@@ -847,7 +665,7 @@ sg_cube_vertices(SG_IN  struct sg_cube_info* info,
 
 	if (positions == SG_nullptr && normals == SG_nullptr && texcoords == SG_nullptr) {
 		*length = 36;
-		return SG_OK_RETURNED_LEN;
+		return SG_OK_RETURNED_LENGTH;
 	}
 
 	if (positions != SG_nullptr)
@@ -873,6 +691,10 @@ sg_indexed_sphere_vertices(SG_IN  struct sg_indexed_sphere_info* info,
 						   SG_OUT struct sg_position* positions,
 						   SG_OUT struct sg_normal* normals,
 						   SG_OUT struct sg_texcoord* texcoords)
+/**
+ * Original Reference:
+ * https://www.3dgep.com/texturing-and-lighting-with-opengl-and-glsl/#Creating_a_Sphere
+ */
 {
 	SG_size n;
 	SG_size i;
@@ -891,7 +713,7 @@ sg_indexed_sphere_vertices(SG_IN  struct sg_indexed_sphere_info* info,
 
 	if (positions == SG_nullptr && normals == SG_nullptr && texcoords == SG_nullptr) {
 		*length = (info->slices+1)*(info->stacks+1);
-		return SG_OK_RETURNED_LEN;
+		return SG_OK_RETURNED_LENGTH;
 	}
 
 	n = 0;
@@ -941,7 +763,7 @@ sg_indexed_sphere_indices(SG_IN  struct sg_indexed_sphere_info* info,
 	
 	if (indices == SG_nullptr) {
 		*len = (info->slices * info->stacks + info->slices) * 6;
-		return SG_OK_RETURNED_LEN;
+		return SG_OK_RETURNED_LENGTH;
 	}
 	
 	n = 0;

@@ -79,9 +79,6 @@ struct DirectionalLight {
 [[nodiscard]]
 NormMesh cube(const sg_material mat)
 {
-	NormMesh mesh;
-	mesh.material = mat;
-
 	sg_status status;
 	SG_size vertices_length{0};
 	
@@ -91,7 +88,7 @@ NormMesh cube(const sg_material mat)
 	cube_info.depth = 0.5f;
 	
 	status = sg_cube_vertices(&cube_info, &vertices_length, nullptr, nullptr, nullptr);
-	if (status != SG_OK_RETURNED_LEN)
+	if (status != SG_OK_RETURNED_LENGTH)
 		throw std::runtime_error("Could not get positions size");
 
 	std::vector<sg_position> positions(vertices_length);
@@ -104,19 +101,38 @@ NormMesh cube(const sg_material mat)
 	if (status != SG_OK_RETURNED_BUFFER)
 		throw std::runtime_error("Could not get vertices");
 
-	std::vector<vertex_posnorm> vertices(positions.size());
-	mesh.length = vertices.size();
+	std::vector<vertex_posnorm> vertices_posnorm(positions.size());
 
-	size_t i = 0;
-	for (auto& vertex: vertices) {
-		vertex.pos.x = positions[i].x;
-		vertex.pos.y = positions[i].y;
-		vertex.pos.z = positions[i].z;
-		vertex.norm.x = normals[i].x;
-		vertex.norm.y = normals[i].y;
-		vertex.norm.z = normals[i].z;
-		i++;
-	}
+	sg_strided_blockcopy_source_info positions_copy;
+	positions_copy.ptr = positions.data();
+	positions_copy.block_size = sizeof(positions[0]);
+	positions_copy.stride = sizeof(positions[0]);
+	positions_copy.block_count = positions.size();
+	
+	status = sg_strided_blockcopy(&positions_copy,
+								  sizeof(vertices_posnorm[0]),
+								  vertices_posnorm.data());
+
+	if (status != SG_OK_COPIED_TO_DST)
+		throw std::runtime_error("Could not copy positions to vertices");
+
+	sg_strided_blockcopy_source_info normals_copy;
+	normals_copy.ptr = normals.data();
+	normals_copy.block_size = sizeof(normals[0]);
+	normals_copy.stride = sizeof(normals[0]);
+	normals_copy.block_count = normals.size();
+
+	status = sg_strided_blockcopy(&normals_copy,
+								  sizeof(vertices_posnorm[0]),
+								  reinterpret_cast<char*>(vertices_posnorm.data()) 
+								  + sizeof(vertices_posnorm[0].pos));
+
+	if (status != SG_OK_COPIED_TO_DST)
+		throw std::runtime_error("Could not copy positions to vertices");
+
+	NormMesh mesh;
+	mesh.material = mat;
+	mesh.length = vertices_posnorm.size();
 
 	// Setup VAO
 	glGenVertexArrays(1, &mesh.vao);
@@ -127,8 +143,8 @@ NormMesh cube(const sg_material mat)
 	glGenBuffers(1, &mesh.vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);  
 	GL_THROW_ON_ERROR();
-	const size_t buffersize = vertices.size() * sizeof(vertex_posnorm);
-	glBufferData(GL_ARRAY_BUFFER, buffersize, vertices.data(), GL_STATIC_DRAW);
+	const size_t buffersize = vertices_posnorm.size() * sizeof(vertex_posnorm);
+	glBufferData(GL_ARRAY_BUFFER, buffersize, vertices_posnorm.data(), GL_STATIC_DRAW);
 	GL_THROW_ON_ERROR();
 	
 	// Setuo VAO Layout
@@ -161,19 +177,15 @@ IndexedNormMesh sphere(const sg_material mat)
 	sphere_info.slices = 16;
 	sphere_info.stacks = 16;
 
-	IndexedNormMesh mesh{};
-	mesh.material = mat;
-
 	sg_status status;
 	SG_size vertices_length{0};
-	
 	status = sg_indexed_sphere_vertices(&sphere_info,
 										&vertices_length,
 										nullptr,
 										nullptr,
 										nullptr);
 
-	if (status != SG_OK_RETURNED_LEN)
+	if (status != SG_OK_RETURNED_LENGTH)
 		throw std::runtime_error("Could not get positions size");
 
 	std::vector<sg_position> positions(vertices_length);
@@ -188,33 +200,54 @@ IndexedNormMesh sphere(const sg_material mat)
 	if (status != SG_OK_RETURNED_BUFFER)
 		throw std::runtime_error("Could not get vertices");
 
-	std::vector<vertex_posnorm> vertices(positions.size());
-	size_t i = 0;
-	for (auto& vertex: vertices) {
-		vertex.pos.x = positions[i].x;
-		vertex.pos.y = positions[i].y;
-		vertex.pos.z = positions[i].z;
-		vertex.norm.x = normals[i].x;
-		vertex.norm.y = normals[i].y;
-		vertex.norm.z = normals[i].z;
-		i++;
-	}
+	std::vector<vertex_posnorm> vertices_posnorm(positions.size());
 	
+	sg_strided_blockcopy_source_info positions_copy;
+	positions_copy.ptr = positions.data();
+	positions_copy.block_size = sizeof(positions[0]);
+	positions_copy.stride = sizeof(positions[0]);
+	positions_copy.block_count = positions.size();
+	
+	status = sg_strided_blockcopy(&positions_copy,
+								  sizeof(vertices_posnorm[0]),
+								  vertices_posnorm.data());
+
+	if (status != SG_OK_COPIED_TO_DST)
+		throw std::runtime_error("Could not copy positions to vertices");
+
+	sg_strided_blockcopy_source_info normals_copy;
+	normals_copy.ptr = normals.data();
+	normals_copy.block_size = sizeof(normals[0]);
+	normals_copy.stride = sizeof(normals[0]);
+	normals_copy.block_count = normals.size();
+
+	status = sg_strided_blockcopy(&normals_copy,
+								  sizeof(vertices_posnorm[0]),
+								  reinterpret_cast<char*>(vertices_posnorm.data()) 
+								  + sizeof(vertices_posnorm[0].pos));
+
+	if (status != SG_OK_COPIED_TO_DST)
+		throw std::runtime_error("Could not copy positions to vertices");
+
+	SG_size indice_length;
 	status = sg_indexed_sphere_indices(&sphere_info,
-									   &mesh.indice_length,
+									   &indice_length,
 									   nullptr);
-	if (status != SG_OK_RETURNED_LEN)
+	if (status != SG_OK_RETURNED_LENGTH)
 		throw std::runtime_error("Could not get indices length");
 	
-	std::vector<SG_indice> indices(mesh.indice_length);
-	mesh.indice_length = indices.size();
-
+	std::vector<SG_indice> indices(indice_length);
 	status = sg_indexed_sphere_indices(&sphere_info,
-									   &mesh.indice_length,
+									   &indice_length,
 									   indices.data());
 
 	if (status != SG_OK_RETURNED_BUFFER)
 		throw std::runtime_error("Could not get indices");
+	
+
+	IndexedNormMesh mesh{};
+	mesh.material = mat;
+	mesh.indice_length = indices.size();
 
 	// Setup VAO
 	glGenVertexArrays(1, &mesh.vao);
@@ -226,8 +259,8 @@ IndexedNormMesh sphere(const sg_material mat)
 	glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);  
 	GL_THROW_ON_ERROR();
 	glBufferData(GL_ARRAY_BUFFER,
-				 vertices.size() * sizeof(vertex_posnorm),
-				 vertices.data(),
+				 vertices_posnorm.size() * sizeof(vertex_posnorm),
+				 vertices_posnorm.data(),
 				 GL_STATIC_DRAW);
 	GL_THROW_ON_ERROR();
 	
