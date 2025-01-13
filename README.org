@@ -97,111 +97,76 @@ if (status != SG_OK_RETURNED_BUFFER)
 #+end_src
 
 Now it is safe to work with, and use the returned buffers for whatever is wanted, such as rendering or even further modification.
-Even though the generated geometry can be used as-is, it would commonly be ideal to re-structure the data into other vertex structures fitting the user's needs.
+The returned vertex data from this library is returned as individual buffers, fitting for usage denoted as Structure-Of-Arrays (SOA).
+This layout is identified by the individual vertex elements being located in their own array structures, meaning that individual vertex sub-type is contained in its own buffer.
+This layout form is chosen as the output as it allows for easier re-formatting should the user require another form of vertex layout.
 
+Even though the generated geometry can be used in its SOA layout, it would commonly be required to re-structure the data into other vertex structures fitting the user's needs.
+Consider the definition of a vertex, used for a custom renderer:
 #+begin_src c++
-struct sg_strided_blockcopy_info info;
-info.src.ptr = src1;
-info.src.block_size = 2;
-info.src.stride = 2;
-info.src.block_count = 4;
-info.dst.stride = 2;
-
-status = sg_strided_blockcopy(&source, dst);
+struct vertex {
+   struct {
+      float x;
+      float y;
+      float z;
+   } pos;
+   struct {
+      float u;
+      float v;
+   } tex;
+};
 #+end_src
 
-
-* Maximum Portability Through Design
- 
-This philosophy shines through the API's design.
-SG does not make any assumptions about the environment, available posix libraries or the specifics of how data should be procured or managed.
-The API is designed in a rather classical style, inspired by other C API's such as Vulkan. 
-This means that the library itself does not create, destroy or manage any allocations, instead
-it is up to the caller to provide a memory area large enough to facilitate the returned data in the places where generated geometry is returned.
-In order to make use of the geometry generation functions of this library, the user is required to call the function twice, providing the same info structure each time.
-
-1. When the generator is called the first time, a pointer to a length variable is required, so that the generator can use the information structure to determine and return a size.
-When doing this, a return status of SG_OK_RETURNED_LEN is returned by the function, signalling that using the length variable is okay. 
-2. After a length is correctly returned by the generator, it is now required that the caller procure a buffer, that is at-least the size of of length, multiplied by the size of the returned buffer elements.
-
-Examples of this can be seen throughout the library:
-
+This structure exibits a layout called Array-Of-Structures (AOS), identified by the individual vertex elements being located alongside each-other in an single array structure.
+Should the user require that the layout of the vertices , such as This can easily be done:
+this is done with the intent that the user should stitch together the data in any fitting ordering required, such as the vertex structure defined above.
+To fit the data to the example vertex structure, one can use the strided blockcopy utility:
 #+begin_src c++
-SG_API_EXPORT
-enum sg_status
-sg_indexed_sphere_vertices(SG_IN  struct sg_indexed_sphere_info* info,
-						   SG_OUT SG_size* length,
-						   SG_OUT struct sg_position* positions,
-						   SG_OUT struct sg_normal* normals,
-						   SG_OUT struct sg_texcoord* texcoords)
-#+end_src
-Ensure to read the documentation for the individual signatures to understand how they are used.
+// Given the generated buffers, modeling the SOA pattern:
+std::vector<sg_position> positions(length);
+std::vector<sg_texcoord> uvs(length);
 
-** Transparency & Error Reporting
+// Create a buffer for the vertices modeling a AOS pattern.
+// @note same length as the individual buffers is required.
+std::vector<vertex> vertices(length);
 
-SG provides maximum transparency in what is happening.
-All SG functions that has some kind of state associated with its usage, returns a status, except in the case where failing is simply not possible.
-This gives the user maximum insight in the result of an operation, both upon success and failure states.
+// Create and specify the contents of a blockcopy source information structure 
+// so that it fits the layout of the returned vertex buffer:
+struct sg_strided_blockcopy_source_info positions_copy;
+positions_copyptr = positions.data();
+positions_copyblock_size = sizeof(positions[0]);
+positions_copystride = sizeof(positions[0]);
+positions_copyblock_count = positions.size();
 
-Functions that by definition cannot fail is considered the only exception to the above rule however:
-#+begin_src c++
-SG_API_EXPORT
-struct sg_material
-sg_material_gold(); 
-#+end_src
-In this case no error checking is needed and the result is directly returned.
+// Do the strided blockcopy for the positions.
+// @note that the stride of the destination buffer is the
+//       size of the entire vertex structure, and the
+//       destination pointer is provided seperately,
+//       as to encourage re-use of the source_info structure
+//       for multiple copying operations.
+status = sg_strided_blockcopy(&positions_copy,
+                              sizeof(vertex),
+                              vertices.data());
 
-A function that requires error management can be seen here:
-#+begin_src c++
-SG_API_EXPORT
-enum SG_status
-sg_indexed_cube_indices(SG_OUT SG_indice* dst,
-						SG_OUT SG_size* dstlen);
-#+end_src
+struct sg_strided_blockcopy_source_info uvs_copy;
+uvs_copyptr = uvs.data();
+uvs_copyblock_size = sizeof(uvs[0]);
+uvs_copystride = sizeof(uvs[0]);
+uvs_copyblock_count = uvs.size();
 
-In this case the retuned SG_status enum is encouraged to be checked.
-
-*** Checking Errors
-
-Checking for errors is essencially as simple as calling
-#+begin_src c++
-SG_API_EXPORT
-SG_bool
-sg_success(SG_IN const enum SG_status status); 
-#+end_src
-On the returned status code from any function that can fail.	
-This is fine for most cases, but take note that a function can have different success
-cases that can be relevant to check:
-
-#+begin_src c++
-unsigned int length;
-enum SG_status status = sg_cube_positions(5, 5, 0.2f, nullptr, &length);
-if (!sg_success(status)) {
-    // Error handling
-}
-#+end_src
-In this example we can intuitively see that the function returns success because
-the length of the input buffer is returned.
-We do however not check for this specific success case, and we might require other
-success cases to be considered error cases for this specific call. 
-Therefore it can be beneficial to instead check on the specific expected returned
-status:
-#+begin_src c++
-if (status != SG_OK_RETURNED_LEN) {
-    // Error handling
-}
+// Do the strided blockcopy for the texture coordinates.
+// @note that the stride of the destination buffer is the
+//       same as the copy operation earlier, but this time
+//       the destination pointer is slided forward to correctly
+//       point to the beginning of the data to copy.
+//       In this case we increment by the size of the position,
+//       as we want to copy to the tex structure.
+status = sg_strided_blockcopy(&uvs_copy,
+                              sizeof(vertex),
+                              vertices.data() + sizeof(vertex.pos));
 #+end_src
 
-From this we can also be vocal about what was returned and use the stringification
-function to convert all known status conditions into something printable:
-#+begin_src c++
-unsigned int length;
-enum SG_status status = sg_cube_positions(5, 5, 0.2f, nullptr, &length);
-if (status != SG_OK_RETURNED_LEN) {
-    printf("SG error: %s\n", sg_status_string(status));
-}
-printf("SG success: %s\n", sg_status_string(status));
-#+end_src
+Following this process it is possible to stitch together vertex data that contains sets of vertex datas.
 
 * Feature List
 
