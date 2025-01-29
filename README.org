@@ -1,9 +1,6 @@
 * Simple Geometry Generation for Rendering
 
-Simple Geometry [SG] is an ansi-c99 single-header framework for generating simple geometry.
-SG is able to generate vertices, indices, normals & texture coordinates for various rendering primitives.
-
-Generate the vertex positions of a sphere:
+An ansi-c99 single-header library for generating simple geometry.
 #+begin_src c++
 sg_cube_info info{};
 info.width = 0.5f;
@@ -19,26 +16,29 @@ sg_cube_vertices(&cube_info, &length, positions, nullptr, nullptr);
 std::vector<sg_normal> normals(length);
 sg_cube_vertices(&cube_info, &length, nullptr, normals.data(), nullptr);
 #+end_src
-
 Note that error detection and management is omitted in the above example.
 
 ** The Goal
    
-SG's overall purpose is to provide simple rendering primitives, ready to use and integrate into rendering engines without being conserned about the chosen rendering API.
-With this library, new programmers should be able to just drop in "simple_geometry.h" and get started with primitive rendering with minimal friction.
-The library dreams of being like "stb_image.h", the centerpiese for image importing in rendering tutorials.
+SG's provides generation and modification algorithms for rendering simple primitives.
+Integrate SG into rendering engines without any friction, simply include "simple_geometry.h" and generate platform & rendering-APU agnoristic primitives.
 
 ** Why c99
 
-The chosen way of implementating the library allows for maximum portability, and thereby usability of differernt platforms, rendering api's etc.
-SG has no external dependencies, and even allows disabling posix header dependencies as-well.
+This library allows for maximum portability, and usability of differernt platforms, rendering-API's etc.
+There are no external dependencies, but posix dependencies can be optionally included for ease-of-use.
 
-* How to Use: Generate an Indexed Unit Sphere 
+* Use SimpleGeometry to Generate an Indexed Unit Sphere 
 
-SG is an ansi-c99 api, but designed to work well with C++ such as with the std::vector container.
-Please note that error checking has been omited for clarity.
-
+Start off by specifying the inclusion of the implementation.
 #+begin_src c++
+#define SIMPLE_GEOMETRY_IMPLEMENTATION
+#include <simple_geometry.h>
+#+end_src
+
+Then, in your code:
+#+begin_src c++
+// Define the status for storing potential errors
 SG_status status;
 
 // Provide an information structure, and a length destination.
@@ -57,13 +57,20 @@ sphere.stacks = 8f;
 //       not the required memory size.
 unsigned int indices_length;
 status = sg_indexed_sphere_indices(&sphere, &indices_length, nullptr);
+
 // Check that the length is correctly returned.
 // @note that alternatively, the function sg_success() can be used to
 //       convert any status into a success/failure signifying boolean.
 if (status != SG_OK_RETURNED_LEN)
     exit(1);
 
+// Prepare a index buffer for the data that will be generated.
+// Allocate it using malloc, an custom allocator or your choice, or even just
+// provide c++ vectors.
+// @note the provided buffer MUST be atleast the minimum length specified
 std::vector<SG_indice> indices(indices_length);
+
+
 status = sg_indexed_sphere_indices(&sphere, &indices_length, indices.data());
 if (status != SG_OK_RETURNED_BUFFER)
     exit(1);
@@ -73,21 +80,24 @@ if (status != SG_OK_RETURNED_BUFFER)
 // @note the returned length signifies the count of vertices,
 //       not the required memory size.
 unsigned int vertices_length;
+
+// Generate the geometry indices.
+// @note because the output data pointer points to valid memory,
+//       the actual vertex data is generated and outputted to
+//       the provided buffers.
 status = sg_indexed_sphere_vertices(&sphere, &vertices_length, nullptr, nullptr, nullptr);
 if (status != SG_OK_RETURNED_LEN)
     exit(1);
 
-// Prepare buffers for the vertice data that will be generated.
-// This can be done for each of the possible outputs specified in the function
-// declaration, such as vertex- positions, normals & UV-coordinates.
-// @note the minimum memory size required is sizeof(buffer-element) * length
+// Prepare vertex buffers for the optional data that will be generated.
+// This can optionally be done for each of the possible outputs specified in the 
+// function declaration, such as vertex- positions, normals & UV-coordinates.
+// only non-nullptr pointers provided will be written to.
+// @note each provided buffer MUST be atleast the minimum length specified
 std::vector<sg_position> positions(length);
 std::vector<sg_texcoord> uvs(length);
 
 // Generate the geometry vertices.
-// @note because the output data pointer points to valid memory,
-//       the actual vertex data is generated and outputted to
-//       the provided buffers.
 // @note In this case we explicitly only generate the positions of the vertices,
 //       if Normals / UV-coordinates are needed, seperate buffers should be prepared
 //       and provided for those.
@@ -96,8 +106,11 @@ if (status != SG_OK_RETURNED_BUFFER)
     exit(1);
 #+end_src
 
-Now it is safe to work with, and use the returned buffers for whatever is wanted, such as rendering or even further modification.
-The returned vertex data from this library is returned as individual buffers, fitting for usage denoted as Structure-Of-Arrays (SOA).
+Now the indices and vertices are safe to work with!
+
+** Additional Information on the Returned Vertices
+
+The returned vertex data from this library is returned as individual buffers, reffered to as an Structure-Of-Arrays (SOA).
 This layout is identified by the individual vertex elements being located in their own array structures, meaning that individual vertex sub-type is contained in its own buffer.
 This layout form is chosen as the output as it allows for easier re-formatting should the user require another form of vertex layout.
 
@@ -117,21 +130,22 @@ struct vertex {
 };
 #+end_src
 
-This structure exibits a layout called Array-Of-Structures (AOS), identified by the individual vertex elements being located alongside each-other in an single array structure.
-Should the user require that the layout of the vertices , such as This can easily be done:
-this is done with the intent that the user should stitch together the data in any fitting ordering required, such as the vertex structure defined above.
+This structure exibits a layout called Array-Of-Structures (AOS), and is identified by the individual vertex elements being located alongside each-other in an single array structure.
+
+*** Converting from SOA to AOS
+
+The returned vertex data is returned as SOA his is done with the intent that the user should stitch together the data in any fitting ordering required, such as the vertex structure defined above.
 To fit the data to the example vertex structure, one can use the strided blockcopy utility:
 #+begin_src c++
-// Given the generated buffers, modeling the SOA pattern:
+// Given the generated buffers from earlier, modeling the SOA pattern:
 std::vector<sg_position> positions(length);
 std::vector<sg_texcoord> uvs(length);
 
 // Create a buffer for the vertices modeling a AOS pattern.
-// @note same length as the individual buffers is required.
+// @note the same length as each of the individual buffers is required.
 std::vector<vertex> vertices(length);
 
-// Create and specify the contents of a blockcopy source information structure 
-// so that it fits the layout of the returned vertex buffer:
+// Create a blockcopy source information structure for the position buffer:
 struct sg_strided_blockcopy_source_info positions_copy;
 positions_copyptr = positions.data();
 positions_copyblock_size = sizeof(positions[0]);
@@ -139,59 +153,30 @@ positions_copystride = sizeof(positions[0]);
 positions_copyblock_count = positions.size();
 
 // Do the strided blockcopy for the positions.
-// @note that the stride of the destination buffer is the
-//       size of the entire vertex structure, and the
-//       destination pointer is provided seperately,
-//       as to encourage re-use of the source_info structure
-//       for multiple copying operations.
+// The destination pointer and stride is provided seperately,
+// to encourage re-use of the source_info structure
+// for multiple copying operations.
+// @note that in this case, the stride of the destination buffer is the
+//       size of the entire vertex structure.
 status = sg_strided_blockcopy(&positions_copy,
                               sizeof(vertex),
                               vertices.data());
 
+// Create a blockcopy source information structure for the uv buffer:
 struct sg_strided_blockcopy_source_info uvs_copy;
 uvs_copyptr = uvs.data();
 uvs_copyblock_size = sizeof(uvs[0]);
 uvs_copystride = sizeof(uvs[0]);
 uvs_copyblock_count = uvs.size();
 
-// Do the strided blockcopy for the texture coordinates.
+// Do the strided blockcopy for the uv's.
 // @note that the stride of the destination buffer is the
 //       same as the copy operation earlier, but this time
 //       the destination pointer is slided forward to correctly
-//       point to the beginning of the data to copy.
-//       In this case we increment by the size of the position,
-//       as we want to copy to the tex structure.
+//       point to the beginning of the first uv-element in the vertex 
+//       structure. In this case we increment by the size of the 
+//       position, as we want to copy to the tex structure.
 status = sg_strided_blockcopy(&uvs_copy,
                               sizeof(vertex),
                               vertices.data() + sizeof(vertex.pos));
 #+end_src
-
-Following this process it is possible to stitch together vertex data that contains sets of vertex datas.
-
-* Feature List
-
-- [ ] Fully-Featured Tests:
-  + [ ] Minimal Opengl Example
-
-- [X] Utilities:
-  + [X] Strided Block Copying for SOA Vertices Generation
-  + [X] Flat Normal Calculation from Non-Indexed Vertices
-
-- [ ] Geometry:
-  + [X] Indexed Plane
-  + [ ] Subdivided Plane (For Height Mapping)
-  + [X] Indexed Cube
-  + [X] Non-Indexed Cube
-  + [ ] UV Sphere
-  + [ ] UV Sphere
-  + [ ] ICO Sphere
-  + [ ] Cylinder
-  + [ ] Cone
-  + [ ] Capsule
-
-- [ ] Simple Flat Materials:
-  + [.] Ones found at: http://devernay.free.fr/cours/opengl/materials.html
-
-- [ ] math.h Library Replacement:
-  + [X] Allows Disabling
-  + [ ] Contains alternative math operations such as square-root
