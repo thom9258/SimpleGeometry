@@ -110,6 +110,7 @@ enum sg_status {
 	SG_ERR_NULLPTR_INPUT,
 	SG_ERR_ZEROSIZE_INPUT,
 	SG_ERR_INFO_NOT_PROVIDED,
+	SG_ERR_SUBDIVISIONS_MUST_BE_GREATER_THAN_1,
 	SG_ERR_DSTLEN_NOT_PROVIDED,
 	SG_ERR_SRCBLKSIZE_LESSTHAN_SRCSTRIDE,
 	SG_ERR_SRCBLKSIZE_LESSTHAN_DSTSTRIDE,
@@ -196,8 +197,8 @@ sg_indexed_plane_vertices(
 	SG_readsFrom                        struct sg_indexed_plane_info const* plane,
 	SG_opt_writesTo                     SG_size* length,
 	SG_opt_writesTo_withLength(length)  struct sg_position* positions,
-	SG_opt_writesTo_withLength(length)  struct sg_normals* normals,
-	SG_opt_writesTo_withLength(length)  struct sg_texcoords* texcoords
+	SG_opt_writesTo_withLength(length)  struct sg_normal* normals,
+	SG_opt_writesTo_withLength(length)  struct sg_texcoord* texcoords
 );
 	
 SG_API_EXPORT
@@ -349,17 +350,19 @@ const char*
 sg_status_string(SG_uses const enum sg_status status)
 {
 	switch (status) {
-	case SG_OK_RETURNED_BUFFER:                return "SG_OK_RETURNED_BUFFER"; 
-	case SG_OK_RETURNED_LENGTH:                return "SG_OK_RETURNED_LENGTH";
-	case SG_OK_COPIED_TO_DST:                  return "SG_OK_COPIED_TO_DST";
-	case SG_ERR_NULLPTR_INPUT:                 return "SG_ERR_NULLPTR_INPUT";
-	case SG_ERR_ZEROSIZE_INPUT:                return "SG_ERR_ZEROSIZE_INPUT";
-	case SG_ERR_INFO_NOT_PROVIDED:             return "SG_ERR_INFO_NOT_PROVIDED";
-	case SG_ERR_DSTLEN_NOT_PROVIDED:           return "SG_ERR_DSTLEN_NOT_PROVIDED";
-	case SG_ERR_SRCBLKSIZE_LESSTHAN_SRCSTRIDE: return "SG_ERR_SRCBLKSIZE_LESSTHAN_SRCSTRIDE";
-	case SG_ERR_SRCBLKSIZE_LESSTHAN_DSTSTRIDE: return "SG_ERR_SRCBLKSIZE_LESSTHAN_DSTSTRIDE";
-	case SG_ERR_NOT_IMPLEMENTED_YET:           return "SG_ERR_NOT_IMPLEMENTED_YET";
-	case SG_ERR_VERTICES_NOT_DIVISIBLE_BY_3:   return "SG_ERR_VERTICES_NOT_DIVISIBLE_BY_3";
+	case SG_OK_RETURNED_BUFFER:                      return "SG_OK_RETURNED_BUFFER"; 
+	case SG_OK_RETURNED_LENGTH:                      return "SG_OK_RETURNED_LENGTH";
+	case SG_OK_COPIED_TO_DST:                        return "SG_OK_COPIED_TO_DST";
+	case SG_ERR_NULLPTR_INPUT:                       return "SG_ERR_NULLPTR_INPUT";
+	case SG_ERR_ZEROSIZE_INPUT:                      return "SG_ERR_ZEROSIZE_INPUT";
+	case SG_ERR_INFO_NOT_PROVIDED:                   return "SG_ERR_INFO_NOT_PROVIDED";
+	case SG_ERR_SUBDIVISIONS_MUST_BE_GREATER_THAN_1: 
+		return "SG_ERR_SUBDIVISIONS_MUST_BE_GREATER_THAN_1";
+	case SG_ERR_DSTLEN_NOT_PROVIDED:                 return "SG_ERR_DSTLEN_NOT_PROVIDED";
+	case SG_ERR_SRCBLKSIZE_LESSTHAN_SRCSTRIDE:       return "SG_ERR_SRCBLKSIZE_LESSTHAN_SRCSTRIDE";
+	case SG_ERR_SRCBLKSIZE_LESSTHAN_DSTSTRIDE:       return "SG_ERR_SRCBLKSIZE_LESSTHAN_DSTSTRIDE";
+	case SG_ERR_NOT_IMPLEMENTED_YET:                 return "SG_ERR_NOT_IMPLEMENTED_YET";
+	case SG_ERR_VERTICES_NOT_DIVISIBLE_BY_3:         return "SG_ERR_VERTICES_NOT_DIVISIBLE_BY_3";
 	};
 	return "SG_UNKNOWN_STATUS";
 }
@@ -535,19 +538,57 @@ sg_indexed_plane_vertices(
 	SG_readsFrom                        struct sg_indexed_plane_info const* plane,
 	SG_opt_writesTo                     SG_size* length,
 	SG_opt_writesTo_withLength(length)  struct sg_position* positions,
-	SG_opt_writesTo_withLength(length)  struct sg_normals* normals,
-	SG_opt_writesTo_withLength(length)  struct sg_texcoords* texcoords
+	SG_opt_writesTo_withLength(length)  struct sg_normal* normals,
+	SG_opt_writesTo_withLength(length)  struct sg_texcoord* texcoords
 )
 {
 	if (plane == SG_nullptr)
 		return SG_ERR_INFO_NOT_PROVIDED;
 	if (length == SG_nullptr)
 		return SG_ERR_DSTLEN_NOT_PROVIDED;
+	if (plane->width_subdivisions < 1 || plane->depth_subdivisions < 1)
+		return SG_ERR_SUBDIVISIONS_MUST_BE_GREATER_THAN_1;
+
+	if (positions == SG_nullptr && normals == SG_nullptr && texcoords == SG_nullptr) {
+		*length = plane->width_subdivisions * plane->depth_subdivisions;
+		return SG_OK_RETURNED_LENGTH;
+	}
 	
-	SG_UNREFERENCED(positions);
-	SG_UNREFERENCED(normals);
-	SG_UNREFERENCED(texcoords);
-	return SG_ERR_NOT_IMPLEMENTED_YET;
+	for (SG_size w = 0; w < plane->width_subdivisions; w++) {
+		for (SG_size h = 0; h < plane->depth_subdivisions; h++) {
+			//TODO: it might be we need depth_subdivisions here
+			SG_size index = h + (w * plane->width_subdivisions);
+			SG_float width_scale = plane->width / plane->width_subdivisions;
+			SG_float depth_scale = plane->depth / plane->depth_subdivisions;
+			if (positions != SG_nullptr) {
+				sg_position position {
+					.x = width_scale * w,
+					.y = depth_scale * h,
+					.z = 0
+				};
+				positions[index] = position;
+			}
+
+			if (normals != SG_nullptr) {
+				sg_normal normal {
+					.x = 0,
+					.y = 0,
+					.z = 1 
+				};
+				normals[index] = normal;
+			}
+
+			if (texcoords != SG_nullptr) {
+				sg_texcoord texcoord {
+					.u = width_scale,
+					.v = depth_scale,
+				};
+				texcoords[index] = texcoord;
+			}
+		}
+	}
+
+	return SG_OK_RETURNED_BUFFER;
 }
 
 enum sg_status
@@ -697,15 +738,6 @@ sg_indexed_sphere_vertices(
  * https://www.3dgep.com/texturing-and-lighting-with-opengl-and-glsl/#Creating_a_Sphere
  */
 {
-	SG_size n;
-	SG_size i;
-	SG_size j;
-	SG_float phi;
-	SG_float theta;
-	sg_normal normal;
-	sg_texcoord texcoord;
-	sg_position position;
-
 	if (info == SG_nullptr)
 		return SG_ERR_INFO_NOT_PROVIDED;
 
@@ -717,26 +749,34 @@ sg_indexed_sphere_vertices(
 		return SG_OK_RETURNED_LENGTH;
 	}
 
-	n = 0;
-	for (i = 0; i <= info->stacks; ++i) {
+	SG_size n = 0;
+	for (SG_size i = 0; i <= info->stacks; ++i) {
+		sg_texcoord texcoord{
+			.u = 0,
+			.v = 0
+		};
+
 		texcoord.v = i / (SG_float)info->stacks;
-		phi = texcoord.v * SG_PI;
+		SG_float phi = texcoord.v * SG_PI;
 
-		for (j = 0; j <= info->slices; ++j) {
+		for (SG_size j = 0; j <= info->slices; ++j) {
 			texcoord.u = j / (SG_float)info->slices;
-			theta = texcoord.u * SG_2PI;
-
-			normal.x = SG_COS(theta) * SG_SIN(phi);
-			normal.y = SG_COS(phi);
-			normal.z = SG_SIN(theta) * SG_SIN(phi);
+			SG_float theta = texcoord.u * SG_2PI;
+			sg_normal normal{
+				.x = SG_COS(theta) * SG_SIN(phi),
+				.y = SG_COS(phi),
+				.z = SG_SIN(theta) * SG_SIN(phi)
+			};
 
 			if (normals != SG_nullptr)
 				normals[n] = normal;
 
 			if (positions != SG_nullptr) {
-				position.x = normal.x * info->radius;
-				position.y = normal.y * info->radius;
-				position.z = normal.z * info->radius;
+				sg_position position{
+					.x = normal.x * info->radius,
+					.y = normal.y * info->radius,
+					.z = normal.z * info->radius
+				};
 				positions[n] = position;
 			}
 			
@@ -756,8 +796,6 @@ sg_indexed_sphere_indices(
 	SG_opt_writesTo_withLength(length)  SG_indice* indices
 )
 {
-	SG_size i;
-	SG_size n;
 	if (info == SG_nullptr)
 		return SG_ERR_INFO_NOT_PROVIDED;
 
@@ -769,8 +807,8 @@ sg_indexed_sphere_indices(
 		return SG_OK_RETURNED_LENGTH;
 	}
 	
-	n = 0;
-	for (i = 0; i < info->slices * info->stacks + info->slices; ++i) {
+	SG_size n = 0;
+	for (SG_size i = 0; i < info->slices * info->stacks + info->slices; ++i) {
 		indices[n++] = i;
 		indices[n++] = i + info->slices + 1;
 		indices[n++] = i + info->slices;
