@@ -14,14 +14,16 @@ struct vertex_posnorm {
 	glm::vec3 pos;
 	glm::vec3 norm;
 	
-	std::string stringify()
-	{
-		std::stringstream ss;
-		ss << "[ " << pos.x << " " << pos.y << " " << pos.z << "  |  ";
-		ss <<  norm.x << " " << norm.y << " " << norm.z << " ]";
-		return ss.str();
-	}
 };
+
+std::string stringify(vertex_posnorm& v)
+{
+	std::stringstream ss;
+	ss << "[ " << v.pos.x << " " << v.pos.y << " " << v.pos.z << "  |  "
+	   <<  v.norm.x << " " << v.norm.y << " " << v.norm.z << " ]";
+	return ss.str();
+}
+
 
 struct Material {
 	Material()
@@ -38,7 +40,7 @@ struct Material {
 	glm::vec3 ambient;
 	glm::vec3 diffuse;
 	glm::vec3 specular;
-	SG_float shininess;
+	float shininess;
 };
 
 struct NormMesh {
@@ -80,7 +82,7 @@ struct DirectionalLight {
 NormMesh cube(const sg_material mat)
 {
 	sg_status status;
-	SG_size vertices_length{0};
+	size_t vertices_length{0};
 	
 	sg_cube_info cube_info{};
 	cube_info.width = 0.5f;
@@ -178,7 +180,7 @@ IndexedNormMesh sphere(const sg_material mat)
 	sphere_info.stacks = 16;
 
 	sg_status status;
-	SG_size vertices_length{0};
+	size_t vertices_length{0};
 	status = sg_indexed_sphere_vertices(&sphere_info,
 										&vertices_length,
 										nullptr,
@@ -229,7 +231,7 @@ IndexedNormMesh sphere(const sg_material mat)
 	if (status != SG_OK_COPIED_TO_DST)
 		throw std::runtime_error("Could not copy positions to vertices");
 
-	SG_size indice_length;
+	size_t indice_length;
 	status = sg_indexed_sphere_indices(&sphere_info,
 									   &indice_length,
 									   nullptr);
