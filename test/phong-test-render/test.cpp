@@ -3,6 +3,7 @@
 #include "utils/DeltaClock.hpp"
 
 #include "GenerateGeometries.hpp"
+#include "Renderers.hpp"
 
 #include <malloc.h>
 #include <stdio.h>
@@ -15,7 +16,6 @@
 #define WIDTH 1200
 #define HEIGHT 900
 #define NAME "Simple Geometry Rendering"
-const std::string shader_path = "../shaders/";
 
 
 #define UNUSED(V) ((void)V)
@@ -37,396 +37,72 @@ DrawType next_draw_type(const DrawType type)
 		return DrawType::NormalDirection;
 }
 
-template<class... Ts> struct variant_switch : Ts... { using Ts::operator()...; };
-template<class... Ts> variant_switch(Ts...) -> variant_switch<Ts...>;
-
-template <typename Mesh>
-struct RandomRotated {
-	explicit RandomRotated(const Mesh mesh, const RandomModelRotator rotator)
-		: mesh(mesh), rotator(rotator) 
-	{}
-	Mesh mesh;
-	RandomModelRotator rotator;
-};
-
-template <typename Mesh>
-struct Model {
-	explicit Model(const Mesh mesh, const glm::mat4 model)
-		: mesh(mesh), model(model) 
-	{}
-	Mesh mesh;
-	glm::mat4 model;
-};
-
-using Drawable = std::variant<RandomRotated<NormMesh>,
-							  RandomRotated<IndexedNormMesh>,
-							  Model<NormMesh>,
-							  Model<IndexedNormMesh>
-							  >;
-
-class NormalDirectionDrawer
+struct RandomScene
 {
-	std::shared_ptr<ValidShader> m_shader;
+	DrawType draw_type = DrawType::Phong;
 
-public:
-	explicit NormalDirectionDrawer()
-	{
-		auto shader = ShaderBuilder::slurp_produce(shader_path + "normal.vert",
-												   shader_path + "normal.frag");
+	std::vector<Drawable> scattered_drawables = {
+		RandomRotated<NormMesh>(cube(sg_material_gold()), RandomModelRotator{}),
+		RandomRotated<NormMesh>(cube(sg_material_obsidian()), RandomModelRotator{}),
+		RandomRotated<NormMesh>(cube(sg_material_default_flat_white()), RandomModelRotator{}), RandomRotated<NormMesh>(cube(sg_material_ruby()), RandomModelRotator{}),
+		RandomRotated<NormMesh>(cube(sg_material_emerald()), RandomModelRotator{}),
+		
+		RandomRotated<IndexedNormMesh>(sphere(sg_material_gold()), RandomModelRotator{}),
+		RandomRotated<IndexedNormMesh>(sphere(sg_material_obsidian()), RandomModelRotator{}),
+		RandomRotated<IndexedNormMesh>(sphere(sg_material_default_flat_white()), RandomModelRotator{}),
+		RandomRotated<IndexedNormMesh>(sphere(sg_material_ruby()), RandomModelRotator{}),
+		RandomRotated<IndexedNormMesh>(sphere(sg_material_emerald()), RandomModelRotator{}),
+	};
 
-		if (std::holds_alternative<InvalidShader>(shader))
-			throw std::runtime_error(std::get<InvalidShader>(shader).what);
-		m_shader = std::move(std::get<std::unique_ptr<ValidShader>>(shader));
-	}
+	glm::mat4 floor_model = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, 0.0f)), glm::vec3(10.0f, 0.05f, 10.0f));
+	Drawable floor = Model<NormMesh>(cube(sg_material_default_flat_white()), floor_model);
+
+	glm::mat4 hill_model = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.0f, -3.0f)), glm::vec3(5.0f));
+	Drawable hill = Model<IndexedNormMesh>(sphere(sg_material_emerald()), hill_model);
 	
-	auto operator()(const glm::mat4 view,
-					const glm::mat4 projection,
-					const float totaltime)
-	{
-		// we need to curry our shader into the returned functor, to do this
-		// we create a local copy
-		auto shader = m_shader;
-		return variant_switch {
-			[shader, view, projection, totaltime] (RandomRotated<NormMesh>& draw) {
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-				GL_THROW_ON_ERROR();
-				glBindVertexArray(draw.mesh.vao);
-				shader->with_activated([&] (ActivatedShader& activated) 
-				{
-					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-					activated.set_mat4("view", view);
-					activated.set_mat4("proj", projection);
-					activated.set_mat4("model", draw.rotator.final_model_matrix(totaltime));
-					GL_THROW_ON_ERROR();
-					glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
-					GL_THROW_ON_ERROR();
-				});
-			},
-			[shader, view, projection, totaltime] (RandomRotated<IndexedNormMesh>& draw) {
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-				GL_THROW_ON_ERROR();
-				glBindVertexArray(draw.mesh.vao);
-				shader->with_activated([&] (ActivatedShader& activated) 
-				{
-					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
-					activated.set_mat4("view", view);
-					activated.set_mat4("proj", projection);
-					activated.set_mat4("model", draw.rotator.final_model_matrix(totaltime));
-					GL_THROW_ON_ERROR();
-					glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
-					GL_THROW_ON_ERROR();
-				});
-			},
-			[shader, view, projection] (Model<NormMesh>& draw) {
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-				GL_THROW_ON_ERROR();
-				glBindVertexArray(draw.mesh.vao);
-				shader->with_activated([&] (ActivatedShader& activated) 
-				{
-					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-					activated.set_mat4("view", view);
-					activated.set_mat4("proj", projection);
-					activated.set_mat4("model", draw.model);
-					GL_THROW_ON_ERROR();
-					glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
-					GL_THROW_ON_ERROR();
-				});
-
-			},
-			[shader, view, projection] (Model<IndexedNormMesh>& draw) {
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-				GL_THROW_ON_ERROR();
-				glBindVertexArray(draw.mesh.vao);
-				shader->with_activated([&] (ActivatedShader& activated) 
-				{
-					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
-					activated.set_mat4("view", view);
-					activated.set_mat4("proj", projection);
-					activated.set_mat4("model", draw.model);
-					GL_THROW_ON_ERROR();
-					glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
-					GL_THROW_ON_ERROR();
-				});
-			},
-			[] (auto& draw) {
-				throw std::runtime_error(std::string("could not handle drawable type [")
-										 + typeid(draw).name() + "]");
-			}};
-	}
 };
 
-class WireframeDrawer
+enum class InspectedObject {
+	Sphere,
+	Cube,
+};
+
+InspectedObject next_inspected_object(InspectedObject object)
 {
-	std::shared_ptr<ValidShader> m_shader;
-
-public:
-	explicit WireframeDrawer()
-	{
-		auto shader = ShaderBuilder::slurp_produce(shader_path + "solidcolor.vert",
-												   shader_path + "solidcolor.frag");
-
-		if (std::holds_alternative<InvalidShader>(shader))
-			throw std::runtime_error(std::get<InvalidShader>(shader).what);
-		m_shader = std::move(std::get<std::unique_ptr<ValidShader>>(shader));
+	switch (object) {
+	case InspectedObject::Sphere: return InspectedObject::Cube;
+	case InspectedObject::Cube:   return InspectedObject::Sphere;
+	default:                      return InspectedObject::Cube;
 	}
-	
-	auto operator()(const glm::mat4 view,
-					const glm::mat4 projection,
-					const float totaltime,
-					const glm::vec3 color)
-	{
-		// we need to curry our shader into the returned functor, to do this
-		// we create a local copy
-		auto shader = m_shader;
-		return variant_switch {
-			[shader, view, projection, totaltime, color] (RandomRotated<NormMesh>& draw) 
-			{
-				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-				GL_THROW_ON_ERROR();
-				glBindVertexArray(draw.mesh.vao);
-				shader->with_activated([&] (ActivatedShader& activated) 
-				{
-					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-					activated.set_mat4("view", view);
-					activated.set_mat4("proj", projection);
-					activated.set_mat4("model", draw.rotator.final_model_matrix(totaltime));
-					activated.set_vec3("color", color);
-					GL_THROW_ON_ERROR();
-					glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
-					GL_THROW_ON_ERROR();
-				});
-			},
-			[shader, view, projection, totaltime, color] (RandomRotated<IndexedNormMesh>& draw) 
-			{
-				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-				GL_THROW_ON_ERROR();
-				glBindVertexArray(draw.mesh.vao);
-				shader->with_activated([&] (ActivatedShader& activated) 
-				{
-					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
-					activated.set_mat4("view", view);
-					activated.set_mat4("proj", projection);
-					activated.set_mat4("model", draw.rotator.final_model_matrix(totaltime));
-					activated.set_vec3("color", color);
-					GL_THROW_ON_ERROR();
-					glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
-					GL_THROW_ON_ERROR();
-				});
-			},
-			[shader, view, projection, color] (Model<NormMesh>& draw) 
-			{
-				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-				GL_THROW_ON_ERROR();
-				glBindVertexArray(draw.mesh.vao);
-				shader->with_activated([&] (ActivatedShader& activated) 
-				{
-					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-					activated.set_mat4("view", view);
-					activated.set_mat4("proj", projection);
-					activated.set_mat4("model", draw.model);
-					activated.set_vec3("color", color);
-					GL_THROW_ON_ERROR();
-					glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
-					GL_THROW_ON_ERROR();
-				});
-			},
-			[shader, view, projection, color](Model<IndexedNormMesh>& draw) 
-			{
-				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-				GL_THROW_ON_ERROR();
-				glBindVertexArray(draw.mesh.vao);
-				shader->with_activated([&] (ActivatedShader& activated) 
-				{
-					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
-					activated.set_mat4("view", view);
-					activated.set_mat4("proj", projection);
-					activated.set_mat4("model", draw.model);
-					activated.set_vec3("color", color);
-					GL_THROW_ON_ERROR();
-					glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
-					GL_THROW_ON_ERROR();
-				});
-			},
-			[] (auto& draw) 
-			{
-				throw std::runtime_error(std::string("could not handle drawable type [")
-										 + typeid(draw).name() + "]");
-			}};
-	}
-};
+}
 
-class PhongDrawer
+struct InspectScene
 {
-	std::shared_ptr<ValidShader> m_shader;
+	DrawType draw_type = DrawType::Phong;
+	InspectedObject object = InspectedObject::Cube;
 
-public:
-	explicit PhongDrawer()
-	{
-
-		auto shader = ShaderBuilder::slurp_produce(shader_path + "phong.vert",
-												   shader_path + "phong.frag");
-
-		if (std::holds_alternative<InvalidShader>(shader))
-			throw std::runtime_error(std::get<InvalidShader>(shader).what);
-		m_shader = std::move(std::get<std::unique_ptr<ValidShader>>(shader));
-	}
-
-	auto operator()(const glm::mat4 view,
-					const glm::mat4 projection,
-					const float totaltime,
-					const DirectionalLight directionallight,
-					const std::vector<PointLight> pointlights)
-	{
-		// we need to curry our shader into the returned functor, to do this
-		// we create a local copy
-		auto shader = m_shader;
-		return variant_switch {
-			[shader, view, projection, totaltime, directionallight, pointlights] 
-			(RandomRotated<NormMesh>& draw) 
-			{
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-				GL_THROW_ON_ERROR();
-				glBindVertexArray(draw.mesh.vao);
-				
-				shader->with_activated([&] (ActivatedShader& activated) 
-				{
-					activated.set_mat4("view", view);
-					activated.set_mat4("proj", projection);
-					activated.set_mat4("model", draw.rotator.final_model_matrix(totaltime));
-					activated.set_vec3("material.ambient", draw.mesh.material.ambient);
-					activated.set_vec3("material.diffuse", draw.mesh.material.diffuse);
-					activated.set_vec3("material.specular", draw.mesh.material.specular);
-					activated.set_float("material.shininess", draw.mesh.material.shininess * 128);
-
-					activated.set_vec3("pointlight.position", pointlights[0].position);
-					activated.set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
-					activated.set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
-					activated.set_vec3("pointlight.specular", pointlights[0].material.specular);
-
-					activated.set_vec3("directionallight.direction", directionallight.direction);
-					activated.set_vec3("directionallight.ambient",
-									   directionallight.material.ambient);
-					activated.set_vec3("directionallight.diffuse",
-									   directionallight.material.diffuse);
-					activated.set_vec3("directionallight.specular",
-									   directionallight.material.specular);
-					GL_THROW_ON_ERROR();
-					glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
-					GL_THROW_ON_ERROR();
-
-				});
-			},
-			[shader, view, projection, totaltime, directionallight, pointlights] 
-			(RandomRotated<IndexedNormMesh>& draw) 
-			{
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-				GL_THROW_ON_ERROR();
-				glBindVertexArray(draw.mesh.vao);
-
-				shader->with_activated([&] (ActivatedShader& activated) 
-				{
-					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
-					activated.set_mat4("view", view);
-					activated.set_mat4("proj", projection);
-					activated.set_mat4("model", draw.rotator.final_model_matrix(totaltime));
-					activated.set_vec3("material.ambient", draw.mesh.material.ambient);
-					activated.set_vec3("material.diffuse", draw.mesh.material.diffuse);
-					activated.set_vec3("material.specular", draw.mesh.material.specular);
-					activated.set_float("material.shininess", draw.mesh.material.shininess * 128);
-					activated.set_vec3("pointlight.position", pointlights[0].position);
-					activated.set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
-					activated.set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
-					activated.set_vec3("pointlight.specular", pointlights[0].material.specular);
-					activated.set_vec3("directionallight.direction", directionallight.direction);
-					activated.set_vec3("directionallight.ambient",
-									   directionallight.material.ambient);
-					activated.set_vec3("directionallight.diffuse",
-									   directionallight.material.diffuse);
-					activated.set_vec3("directionallight.specular",
-									 directionallight.material.specular);
-					
-					GL_THROW_ON_ERROR();
-					glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
-					GL_THROW_ON_ERROR();
-				});
-			},
-			[shader, view, projection, directionallight, pointlights] 
-			(Model<NormMesh>& draw) 
-			{
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-				GL_THROW_ON_ERROR();
-				glBindVertexArray(draw.mesh.vao);
-				shader->with_activated([&] (ActivatedShader& activated) 
-				{
-					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-					activated.set_mat4("view", view);
-					activated.set_mat4("proj", projection);
-					activated.set_mat4("model", draw.model);
-					activated.set_vec3("material.ambient", draw.mesh.material.ambient);
-					activated.set_vec3("material.diffuse", draw.mesh.material.diffuse);
-					activated.set_vec3("material.specular", draw.mesh.material.specular);
-					activated.set_float("material.shininess", draw.mesh.material.shininess * 128);
-					activated.set_vec3("pointlight.position", pointlights[0].position);
-					activated.set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
-					activated.set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
-					activated.set_vec3("pointlight.specular", pointlights[0].material.specular);
-					activated.set_vec3("directionallight.direction", directionallight.direction);
-					activated.set_vec3("directionallight.ambient",   directionallight.material.ambient);
-					activated.set_vec3("directionallight.diffuse",
-									   directionallight.material.diffuse);
-					activated.set_vec3("directionallight.specular",
-									   directionallight.material.specular);
-					
-					GL_THROW_ON_ERROR();
-					glDrawArrays(GL_TRIANGLES, 0, draw.mesh.length);
-					GL_THROW_ON_ERROR();
-				});
-			},
-			[shader, view, projection, directionallight, pointlights] 
-			(Model<IndexedNormMesh>& draw) 
-			{
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-				GL_THROW_ON_ERROR();
-				glBindVertexArray(draw.mesh.vao);
-				shader->with_activated([&] (ActivatedShader& activated) 
-				{
-					glBindBuffer(GL_ARRAY_BUFFER, draw.mesh.vbo);
-					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw.mesh.ebo);
-					activated.set_mat4("view", view);
-					activated.set_mat4("proj", projection);
-					activated.set_mat4("model", draw.model);
-					activated.set_vec3("material.ambient", draw.mesh.material.ambient);
-					activated.set_vec3("material.diffuse", draw.mesh.material.diffuse);
-					activated.set_vec3("material.specular", draw.mesh.material.specular);
-					activated.set_float("material.shininess", draw.mesh.material.shininess * 128);
-					activated.set_vec3("pointlight.position", pointlights[0].position);
-					activated.set_vec3("pointlight.ambient",  pointlights[0].material.ambient);
-					activated.set_vec3("pointlight.diffuse",  pointlights[0].material.diffuse);
-					activated.set_vec3("pointlight.specular", pointlights[0].material.specular);
-					activated.set_vec3("directionallight.direction", directionallight.direction);
-					activated.set_vec3("directionallight.ambient",
-									   directionallight.material.ambient);
-					activated.set_vec3("directionallight.diffuse",
-									   directionallight.material.diffuse);
-					activated.set_vec3("directionallight.specular",
-									   directionallight.material.specular);
-					GL_THROW_ON_ERROR();
-					glDrawElements(GL_TRIANGLES, draw.mesh.indice_length, GL_UNSIGNED_INT, 0);
-					GL_THROW_ON_ERROR();
-				});
-			},
-			[] (auto& draw) 
-			{
-				throw std::runtime_error(std::string("could not handle drawable type [")
-										 + typeid(draw).name() + "]");
-			}};
-	}
+	Drawable dcube = Model<NormMesh>(cube(sg_material_default_flat_white()), glm::mat4(1.0f));
+	Drawable dsphere = Model<IndexedNormMesh>(sphere(sg_material_default_flat_white()), glm::mat4(1.0f));
 };
+
+using Scene = std::variant<RandomScene, InspectScene>;
+
+Scene next_scene(Scene scene)
+{
+	if (auto* p = std::get_if<RandomScene>(&scene)) {
+		InspectScene newscene{};
+		newscene.draw_type = p->draw_type;
+		return newscene;
+	}
+	else if (auto* p = std::get_if<InspectScene>(&scene)) {
+		RandomScene newscene{};
+		newscene.draw_type = p->draw_type;
+		return newscene;
+	}
+	else {
+		throw std::runtime_error("Unknown scene type");
+	}
+}
 
 int main(int argc, char** argv)
 {
@@ -490,35 +166,13 @@ int main(int argc, char** argv)
 											0.1f,
 											100.0f);
 	
-	std::vector<Drawable> scattered_drawables = {
-		RandomRotated<NormMesh>(cube(sg_material_gold()), RandomModelRotator{}),
-		RandomRotated<NormMesh>(cube(sg_material_obsidian()), RandomModelRotator{}),
-		RandomRotated<NormMesh>(cube(sg_material_default_flat_white()), RandomModelRotator{}),
-		RandomRotated<NormMesh>(cube(sg_material_ruby()), RandomModelRotator{}),
-		RandomRotated<NormMesh>(cube(sg_material_emerald()), RandomModelRotator{}),
-		
-		RandomRotated<IndexedNormMesh>(sphere(sg_material_gold()), RandomModelRotator{}),
-		RandomRotated<IndexedNormMesh>(sphere(sg_material_obsidian()), RandomModelRotator{}),
-		RandomRotated<IndexedNormMesh>(sphere(sg_material_default_flat_white()), RandomModelRotator{}),
-		RandomRotated<IndexedNormMesh>(sphere(sg_material_ruby()), RandomModelRotator{}),
-		RandomRotated<IndexedNormMesh>(sphere(sg_material_emerald()), RandomModelRotator{}),
-	};
-
-	auto floor_model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-	floor_model = glm::scale(floor_model, glm::vec3(10.0f, 0.05f, 10.0f));
-	Drawable floor = Model<NormMesh>(cube(sg_material_default_flat_white()), floor_model);
-
-	auto hill_model = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.0f, -3.0f));
-	hill_model = glm::scale(hill_model, glm::vec3(5.0f));
-	Drawable hill = Model<IndexedNormMesh>(sphere(sg_material_emerald()), hill_model);
-	
-	DrawType draw_type = DrawType::Phong;
-	bool exit = false;
-	
 	NormalDirectionDrawer normal_direction_drawer{};
 	WireframeDrawer wireframe_drawer{};
 	PhongDrawer phong_drawer{};
+	Scene current_scene = InspectScene{};
 
+
+	bool exit = false;
 	while (!exit) {
 		const auto deltatime = deltaclock.deltatime_ms();
 		const auto totaltime = deltaclock.totaltime_ms();
@@ -540,8 +194,21 @@ int main(int argc, char** argv)
 					exit = true;
 					break;
 				case SDLK_n:
-					draw_type = next_draw_type(draw_type);
+					if (auto* p = std::get_if<InspectScene>(&current_scene)) {
+						p->draw_type = next_draw_type(p->draw_type);
+					}
+					if (auto* p = std::get_if<RandomScene>(&current_scene)) {
+						p->draw_type = next_draw_type(p->draw_type);
+					}
 					break;
+				case SDLK_m:
+					current_scene = next_scene(current_scene);
+					break;
+				case SDLK_b:
+					if (auto* p = std::get_if<InspectScene>(&current_scene))
+					p->object = next_inspected_object(p->object);
+					break;
+
 				case SDLK_w:
 					camera->add_rotation(-movespeed, 0.0f);
 					break;
@@ -560,7 +227,6 @@ int main(int argc, char** argv)
 				case SDLK_UP:
 					camera->add_radius(-movespeed*2);
 					break;
-
 				}
 				break;
 				
@@ -579,40 +245,96 @@ int main(int argc, char** argv)
 		 * Draw
 		 */
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glEnable(GL_DEPTH_TEST);
-		GL_THROW_ON_ERROR();
+		glEnable(GL_DEPTH_TEST);  
 	
-		const auto draw_world = [&] (auto drawer) 
-		{
-			std::visit(drawer, floor);
-			std::visit(drawer, hill);
+		if (auto* p = std::get_if<RandomScene>(&current_scene)) {
+			const auto draw_world = [&] (auto drawer) 
+			{
+				std::visit(drawer, p->floor);
+				std::visit(drawer, p->hill);
+				
+				for (auto& drawable: p->scattered_drawables)
+					std::visit(drawer, drawable);
+			};
 			
-			for (auto& drawable: scattered_drawables)
-				std::visit(drawer, drawable);
-		};
-		
-		if (draw_type == DrawType::NormalDirection) {
+			switch (p->draw_type) {
+			case DrawType::NormalDirection: {
 				draw_world(normal_direction_drawer(camera->view(), projection, totaltime));
-		}
-		else if (draw_type == DrawType::Wireframe) {
-			const auto red = glm::vec3(1.0f, 0.0f, 0.0f);
-			draw_world(wireframe_drawer(camera->view(),
+				break;
+			}
+			case DrawType::Wireframe: {
+				const auto red = glm::vec3(1.0f, 0.0f, 0.0f);
+				draw_world(wireframe_drawer(camera->view(),
+											projection,
+											totaltime,
+											red));
+				break;
+			}
+			case DrawType::Phong: {
+				const std::vector<PointLight> pointlights{
+					PointLight(glm::vec3(0.0f, 1.0f, 0.0f), sg_material_ruby()),
+				};
+				const auto directionallight = DirectionalLight(glm::vec3(-0.2f, -1.0f, -0.3f),
+															   sg_material_default_flat_white());
+				
+				draw_world(phong_drawer(camera->view(),
 										projection,
 										totaltime,
-										red));
+										directionallight,
+										pointlights));
+				break;
+			}
+			default: 
+				break;
+			}
 		}
-		else {
-			const std::vector<PointLight> pointlights{
-				PointLight(glm::vec3(0.0f, 1.0f, 0.0f), sg_material_ruby()),
-			};
-			const auto directionallight = DirectionalLight(glm::vec3(-0.2f, -1.0f, -0.3f),
-														   sg_material_default_flat_white());
+		else if (auto* p = std::get_if<InspectScene>(&current_scene)) {
 			
-			draw_world(phong_drawer(camera->view(),
-									projection,
-									totaltime,
-									directionallight,
-									pointlights));
+			auto draw_inspected = [&] (auto drawer) {
+				switch (p->object) {
+				case InspectedObject::Cube:
+					std::visit(drawer, p->dcube);
+					break;
+				case InspectedObject::Sphere:
+					std::visit(drawer, p->dsphere);
+					break;
+				default: break;
+			}
+
+			};
+
+
+			switch (p->draw_type) {
+			case DrawType::NormalDirection: {
+				draw_inspected(normal_direction_drawer(camera->view(), projection, totaltime));
+				break;
+			}
+			case DrawType::Wireframe: {
+				const auto red = glm::vec3(1.0f, 0.0f, 0.0f);
+				draw_inspected(wireframe_drawer(camera->view(),
+												projection,
+												totaltime,
+												red));
+				break;
+			}
+			case DrawType::Phong: {
+				const std::vector<PointLight> pointlights{
+					PointLight(glm::vec3(0.0f, 1.0f, 0.0f), sg_material_ruby()),
+				};
+				const auto directionallight = DirectionalLight(glm::vec3(-0.2f, -1.0f, -0.3f),
+															   sg_material_default_flat_white());
+				
+				draw_inspected(phong_drawer(camera->view(),
+											projection,
+											totaltime,
+											directionallight,
+											pointlights));
+				break;
+			}
+			default: 
+				break;
+			}
+
 		}
 	
 		SDL_GL_SwapWindow(window);

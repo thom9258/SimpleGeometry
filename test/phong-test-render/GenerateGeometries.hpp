@@ -1,7 +1,7 @@
 #pragma once
 
 #define SIMPLE_GEOMETRY_IMPLEMENTATION
-#include "../simple_geometry.h"
+#include "../../simple_geometry.h"
 
 #include "utils/Random.hpp"
 
