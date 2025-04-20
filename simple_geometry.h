@@ -737,49 +737,62 @@ sg_cube_vertices(
 	struct sg_texcoord* texcoords
 )
 {
-	const struct sg_position _positions[] = {
-		{-info->width, -info->height, -info->depth},
-		{ info->width, -info->height, -info->depth},
-		{ info->width,  info->height, -info->depth},
-		{ info->width,  info->height, -info->depth},
-		{-info->width,  info->height, -info->depth},
-		{-info->width, -info->height, -info->depth},
 
-		{-info->width, -info->height,  info->depth},
-		{ info->width, -info->height,  info->depth},
-		{ info->width,  info->height,  info->depth},
-		{ info->width,  info->height,  info->depth}, 
-		{-info->width,  info->height,  info->depth},
-		{-info->width, -info->height,  info->depth},
-
-		{-info->width,  info->height,  info->depth},
-		{-info->width,  info->height, -info->depth},
+	const struct sg_position _positions_indiced[] = {
 		{-info->width, -info->height, -info->depth},
-		{-info->width, -info->height, -info->depth},
-		{-info->width, -info->height,  info->depth},
-		{-info->width,  info->height,  info->depth},
-
-		{ info->width,  info->height,  info->depth},
-		{ info->width,  info->height, -info->depth},
-		{ info->width, -info->height, -info->depth},
-		{ info->width, -info->height, -info->depth},
-		{ info->width, -info->height,  info->depth},
-		{ info->width,  info->height,  info->depth},
-
-		{-info->width, -info->height, -info->depth},
-		{ info->width, -info->height, -info->depth},
-		{ info->width, -info->height,  info->depth},
-		{ info->width, -info->height,  info->depth},
-		{-info->width, -info->height,  info->depth},
-		{-info->width, -info->height, -info->depth},
-
-		{-info->width,  info->height, -info->depth},
-		{ info->width,  info->height, -info->depth},
-		{ info->width,  info->height,  info->depth},
-		{ info->width,  info->height,  info->depth},
-		{-info->width,  info->height,  info->depth},
-		{-info->width,  info->height, -info->depth},
+		{info->width, -info->height, -info->depth}, 
+		{info->width, info->height, -info->depth},
+		{-info->width, info->height, -info->depth}, 
+		{-info->width, -info->height, info->depth},
+		{info->width, -info->height, info->depth},
+		{info->width, info->height, info->depth},
+		{-info->width, info->height, info->depth},
 	};
+
+	const struct sg_position _positions[36] = {
+		_positions_indiced[3],
+		_positions_indiced[1],
+		_positions_indiced[0],
+		_positions_indiced[2],
+		_positions_indiced[1],
+		_positions_indiced[3],
+
+		_positions_indiced[2],
+		_positions_indiced[5],
+		_positions_indiced[1],
+		_positions_indiced[6],
+		_positions_indiced[5],
+		_positions_indiced[2],
+
+		_positions_indiced[6],
+		_positions_indiced[4],
+		_positions_indiced[5],
+		_positions_indiced[7],
+		_positions_indiced[4],
+		_positions_indiced[6],
+
+		_positions_indiced[7],
+		_positions_indiced[0],
+		_positions_indiced[4],
+		_positions_indiced[3],
+		_positions_indiced[0],
+		_positions_indiced[7],
+
+		_positions_indiced[7],
+		_positions_indiced[2],
+		_positions_indiced[3],
+		_positions_indiced[6],
+		_positions_indiced[2],
+		_positions_indiced[7],
+
+		_positions_indiced[0],
+		_positions_indiced[5],
+		_positions_indiced[4],
+		_positions_indiced[1],
+		_positions_indiced[5],
+		_positions_indiced[0],
+	};
+
 	const struct sg_normal _normals[] = {
 		{0.0f,  0.0f, -1.0f}, {0.0f,  0.0f, -1.0f},  {0.0f,  0.0f, -1.0f}, 
 		{0.0f,  0.0f, -1.0f}, {0.0f,  0.0f, -1.0f},  {0.0f,  0.0f, -1.0f}, 
