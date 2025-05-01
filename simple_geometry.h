@@ -737,61 +737,11 @@ sg_cube_vertices(
 	struct sg_texcoord* texcoords
 )
 {
+	if (info == NULL)
+		return SG_ERR_INFO_NOT_PROVIDED;
 
-	const struct sg_position _positions_indiced[] = {
-		{-info->width, -info->height, -info->depth},
-		{info->width, -info->height, -info->depth}, 
-		{info->width, info->height, -info->depth},
-		{-info->width, info->height, -info->depth}, 
-		{-info->width, -info->height, info->depth},
-		{info->width, -info->height, info->depth},
-		{info->width, info->height, info->depth},
-		{-info->width, info->height, info->depth},
-	};
-
-	const struct sg_position _positions[36] = {
-		_positions_indiced[3],
-		_positions_indiced[1],
-		_positions_indiced[0],
-		_positions_indiced[2],
-		_positions_indiced[1],
-		_positions_indiced[3],
-
-		_positions_indiced[2],
-		_positions_indiced[5],
-		_positions_indiced[1],
-		_positions_indiced[6],
-		_positions_indiced[5],
-		_positions_indiced[2],
-
-		_positions_indiced[6],
-		_positions_indiced[4],
-		_positions_indiced[5],
-		_positions_indiced[7],
-		_positions_indiced[4],
-		_positions_indiced[6],
-
-		_positions_indiced[7],
-		_positions_indiced[0],
-		_positions_indiced[4],
-		_positions_indiced[3],
-		_positions_indiced[0],
-		_positions_indiced[7],
-
-		_positions_indiced[7],
-		_positions_indiced[2],
-		_positions_indiced[3],
-		_positions_indiced[6],
-		_positions_indiced[2],
-		_positions_indiced[7],
-
-		_positions_indiced[0],
-		_positions_indiced[5],
-		_positions_indiced[4],
-		_positions_indiced[1],
-		_positions_indiced[5],
-		_positions_indiced[0],
-	};
+	if (length == NULL)
+		return SG_ERR_DSTLEN_NOT_PROVIDED;
 
 	const struct sg_normal _normals[] = {
 		{0.0f,  0.0f, -1.0f}, {0.0f,  0.0f, -1.0f},  {0.0f,  0.0f, -1.0f}, 
@@ -812,50 +762,110 @@ sg_cube_vertices(
 		{0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f},
 		{0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f}
 	};
-	const struct sg_texcoord _texcoords[] = {
-		{0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f},
-		{1.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f},
-		
-		{0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f},
-		{1.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f},
-		
-		{1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f},
-		{0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f},
-		
-		{1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f},
-		{0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f},
-		
-		{0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f},
-		{1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 1.0f},
-		
-		{0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f},
-		{1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 1.0f}
+
+	//https://github.com/KhronosGroup/Vulkan-Tools/blob/main/cube/cube.cpp
+	const struct sg_position _positions[36] = {
+		{-info->width, -info->height, -info->depth},  // -X side
+		{-info->width, -info->height,  info->depth},
+		{-info->width,  info->height,  info->depth},
+		{-info->width,  info->height,  info->depth},
+		{-info->width,  info->height, -info->depth},
+		{-info->width, -info->height, -info->depth},
+		{-info->width, -info->height, -info->depth},  // -Z side
+		{ info->width,  info->height, -info->depth},
+		{ info->width, -info->height, -info->depth},
+		{-info->width, -info->height, -info->depth},
+		{-info->width,  info->height, -info->depth},
+		{ info->width,  info->height, -info->depth},
+		{-info->width, -info->height, -info->depth},  // -Y side
+		{ info->width, -info->height, -info->depth},
+		{ info->width, -info->height,  info->depth},
+		{-info->width, -info->height, -info->depth},
+		{ info->width, -info->height,  info->depth},
+		{-info->width, -info->height,  info->depth},
+		{-info->width,  info->height, -info->depth},  // +Y side
+		{-info->width,  info->height,  info->depth},
+		{ info->width,  info->height,  info->depth},
+		{-info->width,  info->height, -info->depth},
+		{ info->width,  info->height,  info->depth},
+		{ info->width,  info->height, -info->depth},
+		{ info->width,  info->height, -info->depth},  // +X side
+		{ info->width,  info->height,  info->depth},
+		{ info->width, -info->height,  info->depth},
+		{ info->width, -info->height,  info->depth},
+		{ info->width, -info->height, -info->depth},
+		{ info->width,  info->height, -info->depth},
+		{-info->width,  info->height,  info->depth},  // +Z side
+		{-info->width, -info->height,  info->depth},
+		{ info->width,  info->height,  info->depth},
+		{-info->width, -info->height,  info->depth},
+		{ info->width, -info->height,  info->depth},
+		{ info->width,  info->height,  info->depth}
 	};
-	size_t i;
+
+	const struct sg_texcoord _texcoords[36] = {
+		{0.0f, 1.0f},  // -X side
+		{1.0f, 1.0f},
+		{1.0f, 0.0f},
+		{1.0f, 0.0f},
+		{0.0f, 0.0f},
+		{0.0f, 1.0f},
+
+		{1.0f, 1.0f},  // -Z side
+		{0.0f, 0.0f},
+		{0.0f, 1.0f},
+		{1.0f, 1.0f},
+		{1.0f, 0.0f},
+		{0.0f, 0.0f},
+
+		{1.0f, 0.0f},  // -Y side
+		{1.0f, 1.0f},
+		{0.0f, 1.0f},
+		{1.0f, 0.0f},
+		{0.0f, 1.0f},
+		{0.0f, 0.0f},
+
+		{1.0f, 0.0f},  // +Y side
+		{0.0f, 0.0f},
+		{0.0f, 1.0f},
+		{1.0f, 0.0f},
+		{0.0f, 1.0f},
+		{1.0f, 1.0f},
+
+		{1.0f, 0.0f},  // +X side
+		{0.0f, 0.0f},
+		{0.0f, 1.0f},
+		{0.0f, 1.0f},
+		{1.0f, 1.0f},
+		{1.0f, 0.0f},
+
+		{0.0f, 0.0f},  // +Z side
+		{0.0f, 1.0f},
+		{1.0f, 0.0f},
+		{0.0f, 1.0f},
+		{1.0f, 1.0f},
+		{1.0f, 0.0f},
+	};
 	
-	if (info == NULL)
-		return SG_ERR_INFO_NOT_PROVIDED;
 
-	if (length == NULL)
-		return SG_ERR_DSTLEN_NOT_PROVIDED;
-
+	size_t i;
 	if (positions == NULL && normals == NULL && texcoords == NULL) {
 		*length = 36;
 		return SG_OK_RETURNED_LENGTH;
 	}
+	
+	if (normals != NULL)
+		for (i = 0; i < 36; ++i)
+			normals[i] = _normals[i];
 
 	if (positions != NULL)
 		for (i = 0; i < 36; ++i)
 			positions[i] = _positions[i];
 
-	if (normals != NULL)
-		for (i = 0; i < 36; ++i)
-			normals[i] = _normals[i];
-
 	if (texcoords != NULL)
 		for (i = 0; i < 36; ++i)
 			texcoords[i] = _texcoords[i];
-
+	
 	return SG_OK_RETURNED_BUFFER;
 }
 
