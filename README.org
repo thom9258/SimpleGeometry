@@ -18,6 +18,24 @@ sg_cube_vertices(&cube_info, &length, nullptr, normals.data(), nullptr);
 #+end_src
 Note that error detection and management is omitted in the above example.
 
+** How to Include
+
+For CMake projects, fetch the latest main using FetchContent:
+#+begin_src cmake
+include(FetchContent)
+message(STATUS "Fetching Simple Geometry")
+FetchContent_Declare(SimpleGeometry
+    GIT_REPOSITORY git@github.com:thom9258/SimpleGeometry.git
+    GIT_TAG main
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
+)
+FetchContent_MakeAvailable(SimpleGeometry)
+target_link_libraries(${PROJECT_NAME} PRIVATE SimpleGeometry)
+#+end_src
+
+For non-CMake projects, simply copy the source of simple_geometry.h into your project files.
+
 ** The Goal
    
 SG's provides generation and modification algorithms for rendering simple primitives.
