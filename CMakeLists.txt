@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 
 project(SimpleGeometry
-  VERSION 0.1.0
+  VERSION 1.0.0
   DESCRIPTION "generate simple geometry primitives in c."
   HOMEPAGE_URL "https://github.com/thom9258/SimpleGeometry/"
 )

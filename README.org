@@ -18,9 +18,10 @@ sg_cube_vertices(&cube_info, &length, nullptr, normals.data(), nullptr);
 #+end_src
 Note that error detection and management is omitted in the above example.
 
-** How to Include
+Simply copy simple_geometry.h into your project, define SIMPLE_GEOMETRY_IMPLEMENTATION before include and you should be good to go.
 
-For CMake projects, fetch the latest main using FetchContent:
+** Import using CMake FetchContent
+
 #+begin_src cmake
 include(FetchContent)
 message(STATUS "Fetching Simple Geometry")
@@ -34,12 +35,50 @@ FetchContent_MakeAvailable(SimpleGeometry)
 target_link_libraries(${PROJECT_NAME} PRIVATE SimpleGeometry)
 #+end_src
 
-For non-CMake projects, simply copy the source of simple_geometry.h into your project files.
+** Import using a local Conan Package
+   
+Building a local conan package can be done as a way to persistently keep a copy of this code for various projects.
+
+to start off, create a libraries directory and clone this reposetory:
+#+begin_src bash
+cd ~
+mkdir libraries
+cd libraries
+git clone git@github.com:thom9258/SimpleGeometry.git
+cd SimpleGeometry
+conan create .
+#+end_src
+
+Now you have a local conan package that can be included.
+Simply add the package dependency to your conanfile.txt:
+#+begin_src
+[requires]
+SimpleGeometry/<INSTALLED-VERSION>
+
+[generators]
+CMakeToolchain
+CMakeDeps
+#+end_src
+
+In your CMakeLists.txt you need to include the package by:
+
+#+begin_src cmake
+find_package(simple-geometry REQUIRED)
+target_link_libraries(${PROJECT_NAME} simple-geometry::simple-geometry)
+#+end_src
+
+Then, to build using conan:
+#+begin_src bash
+conan install . --output-folder=build --build=missing
+cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+cmake --build .
+#+end_src
 
 ** The Goal
    
 SG's provides generation and modification algorithms for rendering simple primitives.
-Integrate SG into rendering engines without any friction, simply include "simple_geometry.h" and generate platform & rendering-APU agnoristic primitives.
+Integrate SG into rendering engines without any friction, simply include "simple_geometry.h" and generate platform & API agnoristic primitive geometry.
 
 ** Why c99
 
