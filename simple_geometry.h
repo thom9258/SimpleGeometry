@@ -23,13 +23,10 @@ extern "C" {
 #  define SG_UNREFERENCED(VAR) (void)(VAR)
 #endif
 	
-/** @addtogroup utility
+/** @addtogroup status
  *  @{
  */
 	
-#define	SG_ARRAY_MEMSIZE(ARR) sizeof(ARR)
-#define	SG_ARRAY_LEN(ARR) (SG_ARRAY_MEMSIZE(ARR) / sizeof(ARR[0]))
-
 enum sg_status {
 	SG_OK_RETURNED_BUFFER,
 	SG_OK_RETURNED_LENGTH,
@@ -246,8 +243,6 @@ sg_cube_vertices(
 );
 	
 	
-
-
 struct sg_indexed_sphere_info {
 	float radius;  /// Radius of the sphere.
 	size_t slices; /// Subdivisions along the xy axis of the sphere.
@@ -309,6 +304,68 @@ sg_indexed_sphere_indices(
     SG_indice* indices
 );
 	
+
+struct sg_indexed_cylinder_info {
+	float height;  /// Height of the cylinder.
+	float top_radius;  /// radius of the top of the cylinder.
+	float bottom_radius;  /// Radius of the bottom of the cylinder.
+	size_t subdivisions; /// Subdivisions along the bottom of the cylinder.
+};
+
+/**
+ * @brief Generate vertices for a cylinder.
+ *
+ * @param[in]     cylinder    Information describing the geometry to generate.
+ * @param[in out] length    The length of required vertex buffers to supply.
+ * @param[out]    positions Vertex positions to generate.
+ * @param[out]    normals   Vertex normals to generate.
+ * @param[out]    texcoords Vertex texcoords to generate.
+ *
+ * @note To get the required length for the returned vertex buffers,
+ *       provide a pointer to 'length' alongside all vertex buffer 
+ *       pointers being NULL.
+ *
+ * @note The output vertex buffers MUST be provided with a length of at-least
+ *       the returned 'length'.
+ *
+ * @note If any of the output vertex buffers are provided as NULL, the
+ *       associated vertex data will not be generated and returned. 
+ *
+ * @return status code describing the result of evaluation.
+ */
+SG_API_EXPORT
+enum sg_status
+sg_indexed_cylinder_vertices(
+	struct sg_indexed_cylinder_info* cylinder,
+	size_t* length,
+	struct sg_position* positions,
+	struct sg_normal* normals,
+	struct sg_texcoord* texcoords
+);
+	
+/**
+ * @brief Generate vertices for a cylinder.
+ *
+ * @param[in]     cylinder    Information describing the geometry to generate.
+ * @param[in out] length    The length of required vertex buffers to supply.
+ * @param[out]    indices Vertex indices to generate.
+ *
+ * @note To get the required length for the returned index buffer,
+ *       provide a pointer to 'length' alongside the index buffer 
+ *       pointer being NULL.
+ *
+ * @note The output index buffer MUST be provided with a length of at-least
+ *       the returned 'length'.
+ *
+ * @return status code describing the result of evaluation.
+ */
+SG_API_EXPORT
+enum sg_status
+sg_indexed_cylinder_indices(
+	struct sg_indexed_cylinder_info const* cylinder,
+	size_t* length,
+    SG_indice* indices);
+	
 /** @}*/
 	
 
@@ -320,6 +377,7 @@ sg_indexed_sphere_indices(
 #  define SG_SQUARE_ROOT(V) sqrt(V)
 #  define SG_COS(V) cos(V)
 #  define SG_SIN(V) sin(V)
+#  define SG_ATAN2(Y, X) atan2(Y, X)
 #endif
 	
 #define SG_PI 3.1415926535897932384626433832795f
@@ -728,6 +786,28 @@ sg_indexed_plane_indices(
 }
 
 
+#if 0
+	const struct sg_normal _normals[36] = {
+		{0.0f,  0.0f, -1.0f}, {0.0f,  0.0f, -1.0f},  {0.0f,  0.0f, -1.0f}, 
+		{0.0f,  0.0f, -1.0f}, {0.0f,  0.0f, -1.0f},  {0.0f,  0.0f, -1.0f}, 
+
+		{0.0f,  0.0f, 1.0f}, {0.0f,  0.0f, 1.0f}, {0.0f,  0.0f, 1.0f},
+		{0.0f,  0.0f, 1.0f}, {0.0f,  0.0f, 1.0f}, {0.0f,  0.0f, 1.0f},
+
+		{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
+		{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
+
+		{1.0f,  0.0f,  0.0f},{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
+		{1.0f,  0.0f,  0.0f},{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
+
+		{0.0f, -1.0f,  0.0f}, {0.0f, -1.0f,  0.0f}, {0.0f, -1.0f,  0.0f},
+		{0.0f, -1.0f,  0.0f}, {0.0f, -1.0f,  0.0f}, {0.0f, -1.0f,  0.0f},
+
+		{0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f},
+		{0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f}
+	};
+#endif
+
 enum sg_status
 sg_cube_vertices(
 	struct sg_cube_info* info,
@@ -743,7 +823,14 @@ sg_cube_vertices(
 	if (length == NULL)
 		return SG_ERR_DSTLEN_NOT_PROVIDED;
 
+	//const struct sg_normal _normals[36] = {
 	const struct sg_normal _normals[] = {
+		{1.0f,  0.0f,  0.0f}, {0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f},
+		{1.0f,  0.0f,  0.0f}, {0.0f,  1.0f,  0.0f}, {0.0f,  1.0f,  0.0f},
+		
+
+
+
 		{0.0f,  0.0f, -1.0f}, {0.0f,  0.0f, -1.0f},  {0.0f,  0.0f, -1.0f}, 
 		{0.0f,  0.0f, -1.0f}, {0.0f,  0.0f, -1.0f},  {0.0f,  0.0f, -1.0f}, 
 
@@ -753,8 +840,8 @@ sg_cube_vertices(
 		{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
 		{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
 
-		{1.0f,  0.0f,  0.0f},{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
-		{1.0f,  0.0f,  0.0f},{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
+		{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
+		{1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f}, {1.0f,  0.0f,  0.0f},
 
 		{0.0f, -1.0f,  0.0f}, {0.0f, -1.0f,  0.0f}, {0.0f, -1.0f,  0.0f},
 		{0.0f, -1.0f,  0.0f}, {0.0f, -1.0f,  0.0f}, {0.0f, -1.0f,  0.0f},
@@ -966,6 +1053,70 @@ sg_indexed_sphere_indices(
 
 	return SG_OK_RETURNED_BUFFER;
 }
+
+SG_API_EXPORT
+enum sg_status
+sg_indexed_cylinder_vertices(
+	struct sg_indexed_cylinder_info* cylinder,
+	size_t* length,
+	struct sg_position* positions,
+	struct sg_normal* normals,
+	struct sg_texcoord* texcoords
+)
+{
+	if (cylinder == NULL)
+		return SG_ERR_INFO_NOT_PROVIDED;
+
+	if (length == NULL)
+		return SG_ERR_DSTLEN_NOT_PROVIDED;
+	
+	if (positions == NULL && normals == NULL && texcoords == NULL) {
+		*length = cylinder->subdivisions * 2;
+		return SG_OK_RETURNED_LENGTH;
+	}
+	
+	const float sector_step = 2 * SG_PI / cylinder->subdivisions;
+    const float z_angle = SG_ATAN2(cylinder->bottom_radius - cylinder->top_radius,
+								   cylinder->height);
+    const float x0 = SG_COS(z_angle);
+    const float y0 = 0;
+    const float z0 = SG_SIN(z_angle);
+	
+	size_t normal_index = 0;
+	if (!normals) {
+		for (size_t i = 0; i < cylinder->subdivisions; i++) {
+			const float sector_angle = i * sector_step;
+			normals[normal_index].x = SG_COS(sector_angle) * x0 - SG_SIN(sector_angle) * y0;
+			normals[normal_index].y = SG_SIN(sector_angle) * x0 - SG_COS(sector_angle) * y0;
+			normals[normal_index].z = 0;
+			normal_index++;
+		}
+	}
+	
+	size_t position_index = 0;
+	if (!positions) {
+		for (size_t i = 0; i < cylinder->subdivisions; i++) {
+			const float sector_angle = i * sector_step;
+			normals[normal_index].x = SG_COS(sector_angle) * x0 - SG_SIN(sector_angle) * y0;
+			normals[normal_index].y = SG_SIN(sector_angle) * x0 - SG_COS(sector_angle) * y0;
+			normals[normal_index].z = 0;
+			normal_index++;
+		}
+
+	}
+
+	return SG_OK_RETURNED_BUFFER;
+}
+
+enum sg_status
+sg_indexed_cylinder_indices(
+	struct sg_indexed_cylinder_info const* cylinder,
+	size_t* length,
+	SG_indice* indices)
+{
+	
+	return SG_OK_RETURNED_BUFFER;
+}	
 
 struct sg_material
 sg_material_gold()
