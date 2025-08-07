@@ -24,16 +24,18 @@ struct VertexPosNorm
 		, norm{glm::vec3(norm.x, norm.y, norm.z)}
 	{}
 
-	ostream& operator<<(ostream& os)
-	{
-		os << "[ " << pos.x << " " << pos.y << " " << pos.z << "  |  "
-		   <<  norm.x << " " << norm.y << " " << norm.z << " ]";
-		return os;
-	}
-
 	glm::vec3 pos = glm::vec3(0.0f);
 	glm::vec3 norm = glm::vec3(0.0f);
 };
+
+ostream& operator<<(ostream& os, VertexPosNorm v)
+{
+	os << "[ " << v.pos.x << " " << v.pos.y << " " << v.pos.z << "  |  "
+	   <<  v.norm.x << " " << v.norm.y << " " << v.norm.z << " ]";
+	return os;
+}
+
+
 
 struct Material {
 	Material()
@@ -175,6 +177,74 @@ std::vector<VertexPosNorm> create_cube()
 
 	if (status != SG_OK_COPIED_TO_DST)
 		throw std::runtime_error("Could not copy positions to vertices");
+
+	return vertices;
+}
+
+[[nodiscard]]
+std::vector<VertexPosNorm> create_cylinder()
+{
+	sg_status status;
+	size_t vertices_length{0};
+	
+	sg_cylinder_info info{};
+	info.height = 1.0f;
+	info.top_radius = 0.3f;
+	info.bottom_radius = 0.7f;
+	info.subdivisions = 32;
+	
+	status = sg_cylinder_vertices(&info, &vertices_length, nullptr, nullptr, nullptr);
+	if (status != SG_OK_RETURNED_LENGTH)
+		throw std::runtime_error("Could not get positions size");
+	
+	std::cout << "Cylinder Vertices count: " << vertices_length << std::endl;
+
+	std::vector<sg_position> positions(vertices_length);
+	std::vector<sg_normal> normals(vertices_length);
+	status = sg_cylinder_vertices(&info,
+								  &vertices_length,
+								  positions.data(),
+								  normals.data(), 
+								  nullptr);
+	if (status != SG_OK_RETURNED_BUFFER)
+		throw std::runtime_error("Could not get vertices");
+
+	std::vector<VertexPosNorm> vertices(positions.size());
+
+	sg_strided_blockcopy_source_info positions_copy;
+	positions_copy.ptr = positions.data();
+	positions_copy.block_size = sizeof(positions[0]);
+	positions_copy.stride = sizeof(positions[0]);
+	positions_copy.block_count = positions.size();
+	
+	status = sg_strided_blockcopy(&positions_copy,
+								  sizeof(vertices[0]),
+								  vertices.data());
+
+	if (status != SG_OK_COPIED_TO_DST)
+		throw std::runtime_error("Could not copy positions to vertices");
+
+	sg_strided_blockcopy_source_info normals_copy;
+	normals_copy.ptr = normals.data();
+	normals_copy.block_size = sizeof(normals[0]);
+	normals_copy.stride = sizeof(normals[0]);
+	normals_copy.block_count = normals.size();
+
+	status = sg_strided_blockcopy(&normals_copy,
+								  sizeof(vertices[0]),
+								  reinterpret_cast<char*>(vertices.data()) 
+								  + sizeof(vertices[0].pos));
+
+	if (status != SG_OK_COPIED_TO_DST)
+		throw std::runtime_error("Could not copy positions to vertices");
+	
+
+	size_t i = 0;
+	for (VertexPosNorm& vertex: vertices) {
+		std::cout << i++ << ") " << vertex << "\n";
+	}
+
+	std::cout << std::endl;
 
 	return vertices;
 }

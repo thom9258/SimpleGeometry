@@ -41,10 +41,25 @@ auto next(DrawType type)
 	};
 }
 
+auto operator<<(std::ostream& os, DrawType type)
+	-> std::ostream&
+{
+	switch (type) {
+	case DrawType::Phong:                os << "Phong"; break;
+	case DrawType::Wireframe:            os << "Wireframe"; break;
+	case DrawType::PhongAndWireframe:    os << "PhongAndWireframe"; break;
+	case DrawType::NormalColor:          os << "NormalColor"; break;
+	case DrawType::PhongNormalWireframe: os << "PhongNormalWireframe"; break;
+	};
+
+	return os;
+}
+
 enum class Object 
 {
 	Sphere,
 	Cube,
+	Cylinder,
 };
 
 [[nodiscard]]
@@ -52,10 +67,22 @@ auto next(Object object)
 	-> Object
 {
 	switch (object) {
-	case Object::Sphere: return Object::Cube;
-	case Object::Cube:   return Object::Sphere;
-	default:             return Object::Sphere;
+	case Object::Sphere:   return Object::Cube;
+	case Object::Cube:     return Object::Cylinder;
+	case Object::Cylinder: return Object::Sphere;
+	default:               return Object::Sphere;
 	}
+}
+
+auto operator<<(std::ostream& os, Object object)
+	-> std::ostream&
+{
+	switch (object) {
+	case Object::Sphere:   os << "Sphere"; break;
+	case Object::Cube:     os << "Cube"; break;
+	case Object::Cylinder: os << "Cylinder"; break;
+	}
+	return os;
 }
 
 int main(int argc, char** argv)
@@ -126,7 +153,7 @@ int main(int argc, char** argv)
 	WireframeDrawer wireframe_drawer{};
 	PhongDrawer phong_drawer{};
 	
-	Object object = Object::Cube;
+	Object object = Object::Cylinder;
 	DrawType draw_type = DrawType::PhongNormalWireframe;
 	bool exit = false;
 
@@ -154,9 +181,11 @@ int main(int argc, char** argv)
 
 				case SDLK_n:
 					draw_type = next(draw_type);
+					std::cout << object << " : "<< draw_type << std::endl;
 					break;
 				case SDLK_m:
 					object = next(object);
+					std::cout << object << " : "<< draw_type << std::endl;
 					break;
 
 				case SDLK_w:
@@ -229,6 +258,16 @@ int main(int argc, char** argv)
 		}
 		else if (object == Object::Cube) {
 			std::vector<VertexPosNorm> vertices = create_cube();
+			NormMesh mesh = create_mesh(vertices, white_material);
+			drawables.push_back(Model<NormMesh>{mesh, model});
+			
+			std::vector<VertexPosNorm> normalvectors = create_normalvectors(vertices,
+																			normalvector_length);
+			NormMesh normalvector_mesh = create_mesh(normalvectors, white_material);
+			normalvector_drawables.push_back(Model<NormMesh>{normalvector_mesh, model});
+		}
+		else if (object == Object::Cylinder) {
+			std::vector<VertexPosNorm> vertices = create_cylinder();
 			NormMesh mesh = create_mesh(vertices, white_material);
 			drawables.push_back(Model<NormMesh>{mesh, model});
 			

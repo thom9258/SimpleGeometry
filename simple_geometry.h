@@ -305,7 +305,7 @@ sg_indexed_sphere_indices(
 );
 	
 
-struct sg_indexed_cylinder_info {
+struct sg_cylinder_info {
 	float height;  /// Height of the cylinder.
 	float top_radius;  /// radius of the top of the cylinder.
 	float bottom_radius;  /// Radius of the bottom of the cylinder.
@@ -335,37 +335,14 @@ struct sg_indexed_cylinder_info {
  */
 SG_API_EXPORT
 enum sg_status
-sg_indexed_cylinder_vertices(
-	struct sg_indexed_cylinder_info* cylinder,
+sg_cylinder_vertices(
+	struct sg_cylinder_info* cylinder,
 	size_t* length,
 	struct sg_position* positions,
 	struct sg_normal* normals,
 	struct sg_texcoord* texcoords
 );
-	
-/**
- * @brief Generate vertices for a cylinder.
- *
- * @param[in]     cylinder    Information describing the geometry to generate.
- * @param[in out] length    The length of required vertex buffers to supply.
- * @param[out]    indices Vertex indices to generate.
- *
- * @note To get the required length for the returned index buffer,
- *       provide a pointer to 'length' alongside the index buffer 
- *       pointer being NULL.
- *
- * @note The output index buffer MUST be provided with a length of at-least
- *       the returned 'length'.
- *
- * @return status code describing the result of evaluation.
- */
-SG_API_EXPORT
-enum sg_status
-sg_indexed_cylinder_indices(
-	struct sg_indexed_cylinder_info const* cylinder,
-	size_t* length,
-    SG_indice* indices);
-	
+
 /** @}*/
 	
 
@@ -823,7 +800,6 @@ sg_cube_vertices(
 	if (length == NULL)
 		return SG_ERR_DSTLEN_NOT_PROVIDED;
 
-	//const struct sg_normal _normals[36] = {
 	const struct sg_normal _normals[36] = {
 		{-1.0f,  0.0f,  0.0f},
 		{-1.0f,  0.0f,  0.0f},
@@ -1074,8 +1050,8 @@ sg_indexed_sphere_indices(
 
 SG_API_EXPORT
 enum sg_status
-sg_indexed_cylinder_vertices(
-	struct sg_indexed_cylinder_info* cylinder,
+sg_cylinder_vertices(
+	struct sg_cylinder_info* cylinder,
 	size_t* length,
 	struct sg_position* positions,
 	struct sg_normal* normals,
@@ -1089,7 +1065,7 @@ sg_indexed_cylinder_vertices(
 		return SG_ERR_DSTLEN_NOT_PROVIDED;
 	
 	if (positions == NULL && normals == NULL && texcoords == NULL) {
-		*length = cylinder->subdivisions * 2;
+		*length = cylinder->subdivisions * 12;
 		return SG_OK_RETURNED_LENGTH;
 	}
 	
@@ -1100,41 +1076,129 @@ sg_indexed_cylinder_vertices(
     const float y0 = 0;
     const float z0 = SG_SIN(z_angle);
 	
-	size_t normal_index = 0;
-	if (!normals) {
-		for (size_t i = 0; i < cylinder->subdivisions; i++) {
-			const float sector_angle = i * sector_step;
-			normals[normal_index].x = SG_COS(sector_angle) * x0 - SG_SIN(sector_angle) * y0;
-			normals[normal_index].y = SG_SIN(sector_angle) * x0 - SG_COS(sector_angle) * y0;
-			normals[normal_index].z = 0;
-			normal_index++;
+
+	const struct sg_normal bottom_cap_normal{ 0.0f, -1.0f, 0.0f };
+	const struct sg_normal top_cap_normal{ 0.0f, 1.0f, 0.0f };
+	
+	size_t vertex_count = 0;
+	
+	// Generate bottom cap
+	for (size_t i = 0; i < cylinder->subdivisions; i++) {
+		const float sector_angle = i * sector_step;
+		const float next_sector_angle = (i+1) * sector_step;
+
+		if (positions) {
+			positions[vertex_count + 0] = (struct sg_position){ 0, -(cylinder->height / 2), 0 };
+			positions[vertex_count + 1] = (struct sg_position){
+				.x = SG_COS(sector_angle) * cylinder->bottom_radius,
+				.y = -(cylinder->height / 2),
+				.z = SG_SIN(sector_angle)* cylinder->bottom_radius
+			};
+			positions[vertex_count + 2] = (struct sg_position){
+				.x = SG_COS(next_sector_angle) * cylinder->bottom_radius,
+				.y = -(cylinder->height / 2),
+				.z = SG_SIN(next_sector_angle) * cylinder->bottom_radius
+			};
 		}
+
+		if (normals) {
+			normals[vertex_count + 0] = bottom_cap_normal;
+			normals[vertex_count + 1] = bottom_cap_normal;
+			normals[vertex_count + 2] = bottom_cap_normal;
+		}
+
+		vertex_count += 3;
 	}
 	
-	size_t position_index = 0;
-	if (!positions) {
-		for (size_t i = 0; i < cylinder->subdivisions; i++) {
-			const float sector_angle = i * sector_step;
-			normals[normal_index].x = SG_COS(sector_angle) * x0 - SG_SIN(sector_angle) * y0;
-			normals[normal_index].y = SG_SIN(sector_angle) * x0 - SG_COS(sector_angle) * y0;
-			normals[normal_index].z = 0;
-			normal_index++;
+	// Generate top cap
+	for (size_t i = 0; i < cylinder->subdivisions; i++) {
+		const float sector_angle = i * sector_step;
+		const float next_sector_angle = (i+1) * sector_step;
+
+		if (positions) {
+			positions[vertex_count + 0] = (struct sg_position){ 0, cylinder->height / 2, 0 };
+			positions[vertex_count + 1] = (struct sg_position){
+				.x = SG_COS(next_sector_angle) * cylinder->top_radius,
+				.y = cylinder->height / 2,
+				.z = SG_SIN(next_sector_angle) * cylinder->top_radius
+			};
+			positions[vertex_count + 2] = (struct sg_position){
+				.x = SG_COS(sector_angle) * cylinder->top_radius,
+				.y = cylinder->height / 2,
+				.z = SG_SIN(sector_angle)* cylinder->top_radius
+			};
 		}
 
-	}
+		if (normals) {
+			normals[vertex_count + 0] = top_cap_normal;
+			normals[vertex_count + 1] = top_cap_normal;
+			normals[vertex_count + 2] = top_cap_normal;
+		}
 
+		vertex_count += 3;
+	}
+	
+	// Generate bottom sides
+	for (size_t i = 0; i < cylinder->subdivisions; i++) {
+		const float sector_angle = i * sector_step;
+		const float next_sector_angle = (i+1) * sector_step;
+
+		if (positions) {
+			struct sg_position bl{
+				.x = SG_COS(sector_angle) * cylinder->bottom_radius,
+				.y = -(cylinder->height / 2),
+				.z = SG_SIN(sector_angle)* cylinder->bottom_radius
+			};
+
+			struct sg_position br{
+				.x = SG_COS(next_sector_angle) * cylinder->bottom_radius,
+				.y = -cylinder->height / 2,
+				.z = SG_SIN(next_sector_angle)* cylinder->bottom_radius
+			};
+			struct sg_position tl{
+				.x = SG_COS(sector_angle) * cylinder->top_radius,
+				.y = cylinder->height / 2,
+				.z = SG_SIN(sector_angle) * cylinder->top_radius
+			};
+			struct sg_position tr{
+				.x = SG_COS(next_sector_angle) * cylinder->top_radius,
+				.y = cylinder->height / 2,
+				.z = SG_SIN(next_sector_angle) * cylinder->top_radius
+			};
+			
+
+			positions[vertex_count + 0] = tl;
+			positions[vertex_count + 1] = br;
+			positions[vertex_count + 2] = bl;
+			positions[vertex_count + 3] = tr;
+			positions[vertex_count + 4] = br;
+			positions[vertex_count + 5] = tl;
+		}
+
+		if (normals) {
+			struct sg_normal left{
+				.x = SG_COS(sector_angle) * x0 - SG_SIN(sector_angle) * y0,
+				.y = 0,
+				.z = SG_SIN(sector_angle) * x0 - SG_COS(sector_angle) * y0
+			};
+			struct sg_normal right{
+				.x = SG_COS(next_sector_angle) * x0 - SG_SIN(next_sector_angle) * y0,
+				.y = 0,
+				.z = SG_SIN(next_sector_angle) * x0 - SG_COS(next_sector_angle) * y0
+			};
+			normals[vertex_count + 0] = left;
+			normals[vertex_count + 1] = right;
+			normals[vertex_count + 2] = left;
+			normals[vertex_count + 3] = right;
+			normals[vertex_count + 4] = right;
+			normals[vertex_count + 5] = left;
+		}
+
+		vertex_count += 6;
+	}
+	
 	return SG_OK_RETURNED_BUFFER;
 }
-
-enum sg_status
-sg_indexed_cylinder_indices(
-	struct sg_indexed_cylinder_info const* cylinder,
-	size_t* length,
-	SG_indice* indices)
-{
-	
-	return SG_OK_RETURNED_BUFFER;
-}	
 
 struct sg_material
 sg_material_gold()
