@@ -94,6 +94,7 @@ auto create_normalvectors(std::vector<VertexPosNorm> vertices,
 {
 	std::vector<VertexPosNorm> normalvectors;
 	for (auto vertex: vertices) {
+		if (vertex.norm == glm::vec3(0.0f)) continue;
 		glm::vec3 const endpos = vertex.pos + glm::normalize(vertex.norm) * normal_length;
 		normalvectors.push_back(VertexPosNorm{vertex.pos, vertex.norm});
 		normalvectors.push_back(VertexPosNorm{endpos, vertex.norm});
@@ -111,6 +112,7 @@ auto create_normalvectors(std::vector<VertexPosNorm> vertices,
 	std::vector<VertexPosNorm> normalvectors;
 	for (auto indice: indices) {
 		VertexPosNorm const vertex = vertices[indice];
+		if (vertex.norm == glm::vec3(0.0f)) continue;
 		glm::vec3 const endpos = vertex.pos + glm::normalize(vertex.norm) * normal_length;
 		normalvectors.push_back(VertexPosNorm{vertex.pos, vertex.norm});
 		normalvectors.push_back(VertexPosNorm{endpos, vertex.norm});

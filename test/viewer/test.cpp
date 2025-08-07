@@ -67,9 +67,10 @@ int main(int argc, char** argv)
 	 *  Setup SDL2 Context and Load OpenGL 3.1 using GLAD
 	 */
 	auto sdl_status = SDL_Init(SDL_INIT_VIDEO);
-	if (sdl_status < 0)
-		return 1;
-
+	if (sdl_status < 0) {
+		throw std::runtime_error("Could not init SDL2");
+	}
+	
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -125,8 +126,8 @@ int main(int argc, char** argv)
 	WireframeDrawer wireframe_drawer{};
 	PhongDrawer phong_drawer{};
 	
-	DrawType draw_type = DrawType::Phong;
-	Object object = Object::Sphere;
+	Object object = Object::Cube;
+	DrawType draw_type = DrawType::PhongNormalWireframe;
 	bool exit = false;
 
 	while (!exit) {
@@ -246,7 +247,6 @@ int main(int argc, char** argv)
 							  drawables);
 		}
 		else if (draw_type == DrawType::Wireframe) {
-			const auto wireframe_red = glm::vec3(1.0f, 0.0f, 0.0f);
 			wireframe_drawer.draw(camera.view(),
 								  projection,
 								  totaltime,
@@ -254,7 +254,6 @@ int main(int argc, char** argv)
 								  drawables);
 		}
 		else if (draw_type == DrawType::PhongAndWireframe) {
-			const auto wireframe_red = glm::vec3(1.0f, 0.0f, 0.0f);
 			phong_drawer.draw(camera.view(),
 							  projection,
 							  totaltime,
@@ -290,4 +289,7 @@ int main(int argc, char** argv)
 		GL_THROW_ON_ERROR();
 		deltaclock.tick();
 	}
+
+	SDL_Quit();
+	return 0;
 }
