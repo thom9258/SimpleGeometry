@@ -19,8 +19,9 @@ extern "C" {
 #  define SG_API_EXPORT
 #endif
 	
-#ifndef	SG_UNREFERENCED
-#  define SG_UNREFERENCED(VAR) (void)(VAR)
+
+#ifndef SG_GIZMO_CIRCLE_SUBDIVISIONS
+#define SG_GIZMO_CIRCLE_SUBDIVISIONS 128
 #endif
 	
 /** @addtogroup status
@@ -342,6 +343,63 @@ sg_cylinder_vertices(
 	struct sg_normal* normals,
 	struct sg_texcoord* texcoords
 );
+	
+struct sg_gizmo_cone_info {
+	float height;
+	float radius;
+};
+
+/**
+ * @brief Generate vertices for a gizmo cone.
+ *
+ * @param[in]     cone      Information describing the geometry to generate.
+ * @param[out]    length    The length of required vertex buffers to supply.
+ * @param[out]    positions Vertex positions to generate.
+ *
+ * @note To get the required length for the returned vertex buffer,
+ *       provide a pointer to 'length' alongside all vertex buffer 
+ *       pointers being NULL.
+ *
+ * @note The output vertex buffer MUST be provided with a length of at-least
+ *       the returned 'length'.
+ *
+ * @return status code describing the result of evaluation.
+ */
+SG_API_EXPORT
+enum sg_status
+sg_gizmo_cone_vertices(
+	struct sg_gizmo_cone_info* cone,
+	size_t* length,
+	struct sg_position* positions
+);
+	
+struct sg_gizmo_sphere_info {
+	float radius;
+};
+
+/**
+ * @brief Generate vertices for a gizmo cone.
+ *
+ * @param[in]     cone      Information describing the geometry to generate.
+ * @param[out]    length    The length of required vertex buffers to supply.
+ * @param[out]    positions Vertex positions to generate.
+ *
+ * @note To get the required length for the returned vertex buffer,
+ *       provide a pointer to 'length' alongside all vertex buffer 
+ *       pointers being NULL.
+ *
+ * @note The output vertex buffer MUST be provided with a length of at-least
+ *       the returned 'length'.
+ *
+ * @return status code describing the result of evaluation.
+ */
+SG_API_EXPORT
+enum sg_status
+sg_gizmo_sphere_vertices(
+	struct sg_gizmo_sphere_info* sphere,
+	size_t* length,
+	struct sg_position* positions
+);
 
 /** @}*/
 	
@@ -452,8 +510,7 @@ struct sg_material {
 };
 
 /**
- * @brief get the material properties of gold.
- * @return the material.
+ * @brief get the material properties of gold. * @return the material.
  */
 SG_API_EXPORT
 struct sg_material
@@ -756,9 +813,9 @@ sg_indexed_plane_indices(
 	SG_indice* indices
 )
 {
-	SG_UNREFERENCED(plane);
-	SG_UNREFERENCED(length);
-	SG_UNREFERENCED(indices);
+	(void)(plane);
+	(void)(length);
+	(void)(indices);
 	return SG_ERR_NOT_IMPLEMENTED_YET;
 }
 
@@ -1048,7 +1105,6 @@ sg_indexed_sphere_indices(
 	return SG_OK_RETURNED_BUFFER;
 }
 
-SG_API_EXPORT
 enum sg_status
 sg_cylinder_vertices(
 	struct sg_cylinder_info* cylinder,
@@ -1069,35 +1125,34 @@ sg_cylinder_vertices(
 		return SG_OK_RETURNED_LENGTH;
 	}
 	
-	const float sector_step = 2 * SG_PI / cylinder->subdivisions;
-    const float z_angle = SG_ATAN2(cylinder->bottom_radius - cylinder->top_radius,
-								   cylinder->height);
-    const float x0 = SG_COS(z_angle);
-    const float y0 = 0;
-    const float z0 = SG_SIN(z_angle);
+	const float cylinder_top_radius = cylinder->top_radius;
+	const float cylinder_bottom_radius = cylinder->bottom_radius;
+	const float cylinder_height = cylinder->height;
+	const size_t cylinder_subdivisions = cylinder->subdivisions;
 	
-
+	const float sector_step = 2 * SG_PI / cylinder_subdivisions;
 	const struct sg_normal bottom_cap_normal{ 0.0f, -1.0f, 0.0f };
 	const struct sg_normal top_cap_normal{ 0.0f, 1.0f, 0.0f };
 	
+	const float z_angle = SG_ATAN2(cylinder_bottom_radius - cylinder_top_radius,
+								   cylinder_height);
 	size_t vertex_count = 0;
-	
 	// Generate bottom cap
-	for (size_t i = 0; i < cylinder->subdivisions; i++) {
+	for (size_t i = 0; i < cylinder_subdivisions; i++) {
 		const float sector_angle = i * sector_step;
 		const float next_sector_angle = (i+1) * sector_step;
 
 		if (positions) {
-			positions[vertex_count + 0] = (struct sg_position){ 0, -(cylinder->height / 2), 0 };
+			positions[vertex_count + 0] = (struct sg_position){ 0, -(cylinder_height / 2), 0 };
 			positions[vertex_count + 1] = (struct sg_position){
-				.x = SG_COS(sector_angle) * cylinder->bottom_radius,
-				.y = -(cylinder->height / 2),
-				.z = SG_SIN(sector_angle)* cylinder->bottom_radius
+				.x = SG_COS(sector_angle) * cylinder_bottom_radius,
+				.y = -(cylinder_height / 2),
+				.z = SG_SIN(sector_angle)* cylinder_bottom_radius
 			};
 			positions[vertex_count + 2] = (struct sg_position){
-				.x = SG_COS(next_sector_angle) * cylinder->bottom_radius,
-				.y = -(cylinder->height / 2),
-				.z = SG_SIN(next_sector_angle) * cylinder->bottom_radius
+				.x = SG_COS(next_sector_angle) * cylinder_bottom_radius,
+				.y = -(cylinder_height / 2),
+				.z = SG_SIN(next_sector_angle) * cylinder_bottom_radius
 			};
 		}
 
@@ -1111,21 +1166,21 @@ sg_cylinder_vertices(
 	}
 	
 	// Generate top cap
-	for (size_t i = 0; i < cylinder->subdivisions; i++) {
+	for (size_t i = 0; i < cylinder_subdivisions; i++) {
 		const float sector_angle = i * sector_step;
 		const float next_sector_angle = (i+1) * sector_step;
 
 		if (positions) {
-			positions[vertex_count + 0] = (struct sg_position){ 0, cylinder->height / 2, 0 };
+			positions[vertex_count + 0] = (struct sg_position){ 0, cylinder_height / 2, 0 };
 			positions[vertex_count + 1] = (struct sg_position){
-				.x = SG_COS(next_sector_angle) * cylinder->top_radius,
-				.y = cylinder->height / 2,
-				.z = SG_SIN(next_sector_angle) * cylinder->top_radius
+				.x = SG_COS(next_sector_angle) * cylinder_top_radius,
+				.y = cylinder_height / 2,
+				.z = SG_SIN(next_sector_angle) * cylinder_top_radius
 			};
 			positions[vertex_count + 2] = (struct sg_position){
-				.x = SG_COS(sector_angle) * cylinder->top_radius,
-				.y = cylinder->height / 2,
-				.z = SG_SIN(sector_angle)* cylinder->top_radius
+				.x = SG_COS(sector_angle) * cylinder_top_radius,
+				.y = cylinder_height / 2,
+				.z = SG_SIN(sector_angle)* cylinder_top_radius
 			};
 		}
 
@@ -1138,32 +1193,32 @@ sg_cylinder_vertices(
 		vertex_count += 3;
 	}
 	
-	// Generate bottom sides
-	for (size_t i = 0; i < cylinder->subdivisions; i++) {
+	// Generate sides
+	for (size_t i = 0; i < cylinder_subdivisions; i++) {
 		const float sector_angle = i * sector_step;
 		const float next_sector_angle = (i+1) * sector_step;
 
 		if (positions) {
 			struct sg_position bl{
-				.x = SG_COS(sector_angle) * cylinder->bottom_radius,
-				.y = -(cylinder->height / 2),
-				.z = SG_SIN(sector_angle)* cylinder->bottom_radius
+				.x = SG_COS(sector_angle) * cylinder_bottom_radius,
+				.y = -(cylinder_height / 2),
+				.z = SG_SIN(sector_angle)* cylinder_bottom_radius
 			};
 
 			struct sg_position br{
-				.x = SG_COS(next_sector_angle) * cylinder->bottom_radius,
-				.y = -cylinder->height / 2,
-				.z = SG_SIN(next_sector_angle)* cylinder->bottom_radius
+				.x = SG_COS(next_sector_angle) * cylinder_bottom_radius,
+				.y = -cylinder_height / 2,
+				.z = SG_SIN(next_sector_angle)* cylinder_bottom_radius
 			};
 			struct sg_position tl{
-				.x = SG_COS(sector_angle) * cylinder->top_radius,
-				.y = cylinder->height / 2,
-				.z = SG_SIN(sector_angle) * cylinder->top_radius
+				.x = SG_COS(sector_angle) * cylinder_top_radius,
+				.y = cylinder_height / 2,
+				.z = SG_SIN(sector_angle) * cylinder_top_radius
 			};
 			struct sg_position tr{
-				.x = SG_COS(next_sector_angle) * cylinder->top_radius,
-				.y = cylinder->height / 2,
-				.z = SG_SIN(next_sector_angle) * cylinder->top_radius
+				.x = SG_COS(next_sector_angle) * cylinder_top_radius,
+				.y = cylinder_height / 2,
+				.z = SG_SIN(next_sector_angle) * cylinder_top_radius
 			};
 			
 
@@ -1174,17 +1229,17 @@ sg_cylinder_vertices(
 			positions[vertex_count + 4] = br;
 			positions[vertex_count + 5] = tl;
 		}
-
+		
 		if (normals) {
 			struct sg_normal left{
-				.x = SG_COS(sector_angle) * x0 - SG_SIN(sector_angle) * y0,
-				.y = 0,
-				.z = SG_SIN(sector_angle) * x0 - SG_COS(sector_angle) * y0
+				.x = SG_COS(sector_angle),
+				.y = z_angle,
+				.z = SG_SIN(sector_angle)
 			};
 			struct sg_normal right{
-				.x = SG_COS(next_sector_angle) * x0 - SG_SIN(next_sector_angle) * y0,
-				.y = 0,
-				.z = SG_SIN(next_sector_angle) * x0 - SG_COS(next_sector_angle) * y0
+				.x = SG_COS(next_sector_angle),
+				.y = z_angle,
+				.z = SG_SIN(next_sector_angle)
 			};
 			normals[vertex_count + 0] = left;
 			normals[vertex_count + 1] = right;
@@ -1199,6 +1254,189 @@ sg_cylinder_vertices(
 	
 	return SG_OK_RETURNED_BUFFER;
 }
+
+enum sg_status
+sg_gizmo_cone_vertices(
+	struct sg_gizmo_cone_info* cone,
+	size_t* length,
+	struct sg_position* positions)
+{
+	if (!cone) return SG_ERR_INFO_NOT_PROVIDED;
+
+	
+	if (!positions) {
+		if (!length) return SG_ERR_DSTLEN_NOT_PROVIDED;
+		
+		*length = 12 + SG_GIZMO_CIRCLE_SUBDIVISIONS * 3;
+		return SG_OK_RETURNED_LENGTH;
+	}
+	
+	const float cone_height = cone->height;
+	const float cone_radius = cone->radius;
+	const float sector_step = 2 * SG_PI / SG_GIZMO_CIRCLE_SUBDIVISIONS;
+	
+	size_t vertex_count = 0;
+	
+		// Generate top cap
+	for (size_t i = 0; i < SG_GIZMO_CIRCLE_SUBDIVISIONS; i++) {
+		const float sector_angle = i * sector_step;
+		const float next_sector_angle = (i+1) * sector_step;
+
+		const struct sg_position sector_position{
+			.x = SG_COS(next_sector_angle) * cone_radius,
+			.y = -(cone_height / 2),
+			.z = SG_SIN(next_sector_angle) * cone_radius
+		};
+		const struct sg_position next_sector_position{
+			.x = SG_COS(sector_angle) * cone_radius,
+			.y = -(cone_height / 2),
+			.z = SG_SIN(sector_angle)* cone_radius
+		};
+		
+		positions[vertex_count + 0] = sector_position;
+		positions[vertex_count + 1] = next_sector_position;
+		positions[vertex_count + 2] = sector_position;
+		vertex_count += 3;
+	}
+	
+	const struct sg_position top{
+		.x = 0,
+		.y = cone_height / 2,
+		.z = 0
+	};
+	const struct sg_position left{
+		.x = cone_radius,
+		.y = -(cone_height / 2),
+		.z = 0
+	};
+	positions[vertex_count + 0] = top;
+	positions[vertex_count + 1] = left;
+	positions[vertex_count + 2] = top;
+	vertex_count += 3;
+
+	const struct sg_position right{
+		.x = -cone_radius,
+		.y = -(cone_height / 2),
+		.z = 0
+	};
+	positions[vertex_count + 0] = top;
+	positions[vertex_count + 1] = right;
+	positions[vertex_count + 2] = top;
+	vertex_count += 3;
+
+	const struct sg_position front{
+		.x = 0,
+		.y = -(cone_height / 2),
+		.z = cone_radius
+	};
+	positions[vertex_count + 0] = top;
+	positions[vertex_count + 1] = front;
+	positions[vertex_count + 2] = top;
+	vertex_count += 3;
+
+	const struct sg_position back{
+		.x = 0,
+		.y = -(cone_height / 2),
+		.z = -cone_radius
+	};
+	positions[vertex_count + 0] = top;
+	positions[vertex_count + 1] = back;
+	positions[vertex_count + 2] = top;
+	
+	return SG_OK_RETURNED_BUFFER;
+}
+
+enum sg_status
+sg_gizmo_sphere_vertices(
+	struct sg_gizmo_sphere_info* sphere,
+	size_t* length,
+	struct sg_position* positions)
+{
+	if (!sphere) return SG_ERR_INFO_NOT_PROVIDED;
+
+	
+	if (!positions) {
+		if (!length) return SG_ERR_DSTLEN_NOT_PROVIDED;
+		
+		*length = (SG_GIZMO_CIRCLE_SUBDIVISIONS * 3) * 3;
+		return SG_OK_RETURNED_LENGTH;
+	}
+	
+	const float sphere_radius = sphere->radius;
+	const float sector_step = 2 * SG_PI / SG_GIZMO_CIRCLE_SUBDIVISIONS;
+	
+	size_t vertex_count = 0;
+	
+	// Generate x band
+	for (size_t i = 0; i < SG_GIZMO_CIRCLE_SUBDIVISIONS; i++) {
+		const float sector_angle = i * sector_step;
+		const float next_sector_angle = (i+1) * sector_step;
+
+		const struct sg_position sector_position{
+			.x = 0,
+			.y = SG_COS(next_sector_angle) * sphere_radius,
+			.z = SG_SIN(next_sector_angle) * sphere_radius
+		};
+		const struct sg_position next_sector_position{
+			.x = 0,
+			.y = SG_COS(sector_angle) * sphere_radius,
+			.z = SG_SIN(sector_angle)* sphere_radius
+		};
+		
+		positions[vertex_count + 0] = sector_position;
+		positions[vertex_count + 1] = next_sector_position;
+		positions[vertex_count + 2] = sector_position;
+		vertex_count += 3;
+	}
+	
+	// Generate y band
+	for (size_t i = 0; i < SG_GIZMO_CIRCLE_SUBDIVISIONS; i++) {
+		const float sector_angle = i * sector_step;
+		const float next_sector_angle = (i+1) * sector_step;
+
+		const struct sg_position sector_position{
+			.x = SG_COS(next_sector_angle) * sphere_radius,
+			.y = 0,
+			.z = SG_SIN(next_sector_angle) * sphere_radius
+		};
+		const struct sg_position next_sector_position{
+			.x = SG_COS(sector_angle) * sphere_radius,
+			.y = 0,
+			.z = SG_SIN(sector_angle)* sphere_radius
+		};
+		
+		positions[vertex_count + 0] = sector_position;
+		positions[vertex_count + 1] = next_sector_position;
+		positions[vertex_count + 2] = sector_position;
+		vertex_count += 3;
+	}
+	
+	// Generate z band
+	for (size_t i = 0; i < SG_GIZMO_CIRCLE_SUBDIVISIONS; i++) {
+		const float sector_angle = i * sector_step;
+		const float next_sector_angle = (i+1) * sector_step;
+
+		const struct sg_position sector_position{
+			.x = SG_COS(next_sector_angle) * sphere_radius,
+			.y = SG_SIN(next_sector_angle) * sphere_radius,
+			.z = 0
+		};
+		const struct sg_position next_sector_position{
+			.x = SG_COS(sector_angle) * sphere_radius,
+			.y = SG_SIN(sector_angle)* sphere_radius,
+			.z = 0
+		};
+		
+		positions[vertex_count + 0] = sector_position;
+		positions[vertex_count + 1] = next_sector_position;
+		positions[vertex_count + 2] = sector_position;
+		vertex_count += 3;
+	}
+
+	return SG_OK_RETURNED_BUFFER;
+}
+
+
 
 struct sg_material
 sg_material_gold()

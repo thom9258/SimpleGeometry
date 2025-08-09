@@ -60,6 +60,8 @@ enum class Object
 	Sphere,
 	Cube,
 	Cylinder,
+	GizmoCone,
+	GizmoSphere,
 };
 
 [[nodiscard]]
@@ -67,10 +69,11 @@ auto next(Object object)
 	-> Object
 {
 	switch (object) {
-	case Object::Sphere:   return Object::Cube;
-	case Object::Cube:     return Object::Cylinder;
-	case Object::Cylinder: return Object::Sphere;
-	default:               return Object::Sphere;
+	case Object::Sphere:      return Object::Cube;
+	case Object::Cube:        return Object::Cylinder;
+	case Object::Cylinder:    return Object::GizmoCone;
+	case Object::GizmoCone:   return Object::GizmoSphere;
+	case Object::GizmoSphere: return Object::Sphere;
 	}
 }
 
@@ -78,9 +81,11 @@ auto operator<<(std::ostream& os, Object object)
 	-> std::ostream&
 {
 	switch (object) {
-	case Object::Sphere:   os << "Sphere"; break;
-	case Object::Cube:     os << "Cube"; break;
-	case Object::Cylinder: os << "Cylinder"; break;
+	case Object::Sphere:      os << "Sphere"; break;
+	case Object::Cube:        os << "Cube"; break;
+	case Object::Cylinder:    os << "Cylinder"; break;
+	case Object::GizmoCone:   os << "GizmoCone"; break;
+	case Object::GizmoSphere: os << "GizmoSphere"; break;
 	}
 	return os;
 }
@@ -275,6 +280,18 @@ int main(int argc, char** argv)
 																			normalvector_length);
 			NormMesh normalvector_mesh = create_mesh(normalvectors, white_material);
 			normalvector_drawables.push_back(Model<NormMesh>{normalvector_mesh, model});
+		}
+		else if (object == Object::GizmoCone) {
+			std::vector<VertexPosNorm> vertices = create_gizmo_cone();
+			NormMesh mesh = create_mesh(vertices, ruby_material);
+			drawables.push_back(Model<NormMesh>{mesh, model});
+			normalvector_drawables.push_back(Model<NormMesh>{mesh, model});
+		}
+		else if (object == Object::GizmoSphere) {
+			std::vector<VertexPosNorm> vertices = create_gizmo_sphere();
+			NormMesh mesh = create_mesh(vertices, ruby_material);
+			drawables.push_back(Model<NormMesh>{mesh, model});
+			normalvector_drawables.push_back(Model<NormMesh>{mesh, model});
 		}
 	
 		if (draw_type == DrawType::Phong) {

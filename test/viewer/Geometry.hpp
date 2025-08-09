@@ -188,17 +188,15 @@ std::vector<VertexPosNorm> create_cylinder()
 	size_t vertices_length{0};
 	
 	sg_cylinder_info info{};
-	info.height = 1.0f;
-	info.top_radius = 0.3f;
-	info.bottom_radius = 0.7f;
+	info.height = 1.5f;
+	info.top_radius = 0.0f;
+	info.bottom_radius = 0.5f;
 	info.subdivisions = 32;
 	
 	status = sg_cylinder_vertices(&info, &vertices_length, nullptr, nullptr, nullptr);
 	if (status != SG_OK_RETURNED_LENGTH)
 		throw std::runtime_error("Could not get positions size");
 	
-	std::cout << "Cylinder Vertices count: " << vertices_length << std::endl;
-
 	std::vector<sg_position> positions(vertices_length);
 	std::vector<sg_normal> normals(vertices_length);
 	status = sg_cylinder_vertices(&info,
@@ -237,14 +235,83 @@ std::vector<VertexPosNorm> create_cylinder()
 
 	if (status != SG_OK_COPIED_TO_DST)
 		throw std::runtime_error("Could not copy positions to vertices");
+
+	return vertices;
+}
+
+[[nodiscard]]
+std::vector<VertexPosNorm> create_gizmo_cone()
+{
+	sg_status status;
+	size_t vertices_length{0};
 	
+	sg_gizmo_cone_info info{};
+	info.height = 1.0f;
+	info.radius = 0.5f;
+	
+	status = sg_gizmo_cone_vertices(&info, &vertices_length, nullptr);
+	if (status != SG_OK_RETURNED_LENGTH)
+		throw std::runtime_error("Could not get positions size");
+	
+	std::vector<sg_position> positions(vertices_length);
+	status = sg_gizmo_cone_vertices(&info,
+									&vertices_length,
+									positions.data());
+	if (status != SG_OK_RETURNED_BUFFER)
+		throw std::runtime_error("Could not get vertices");
 
-	size_t i = 0;
-	for (VertexPosNorm& vertex: vertices) {
-		std::cout << i++ << ") " << vertex << "\n";
-	}
+	std::vector<VertexPosNorm> vertices(positions.size());
 
-	std::cout << std::endl;
+	sg_strided_blockcopy_source_info positions_copy;
+	positions_copy.ptr = positions.data();
+	positions_copy.block_size = sizeof(positions[0]);
+	positions_copy.stride = sizeof(positions[0]);
+	positions_copy.block_count = positions.size();
+	
+	status = sg_strided_blockcopy(&positions_copy,
+								  sizeof(vertices[0]),
+								  vertices.data());
+
+	if (status != SG_OK_COPIED_TO_DST)
+		throw std::runtime_error("Could not copy positions to vertices");
+
+	return vertices;
+}
+
+[[nodiscard]]
+std::vector<VertexPosNorm> create_gizmo_sphere()
+{
+	sg_status status;
+	size_t vertices_length{0};
+	
+	sg_gizmo_sphere_info info{};
+	info.radius = 1.0f;
+	
+	status = sg_gizmo_sphere_vertices(&info, &vertices_length, nullptr);
+	if (status != SG_OK_RETURNED_LENGTH)
+		throw std::runtime_error("Could not get positions size");
+	
+	std::vector<sg_position> positions(vertices_length);
+	status = sg_gizmo_sphere_vertices(&info,
+									  &vertices_length,
+									  positions.data());
+	if (status != SG_OK_RETURNED_BUFFER)
+		throw std::runtime_error("Could not get vertices");
+
+	std::vector<VertexPosNorm> vertices(positions.size());
+
+	sg_strided_blockcopy_source_info positions_copy;
+	positions_copy.ptr = positions.data();
+	positions_copy.block_size = sizeof(positions[0]);
+	positions_copy.stride = sizeof(positions[0]);
+	positions_copy.block_count = positions.size();
+	
+	status = sg_strided_blockcopy(&positions_copy,
+								  sizeof(vertices[0]),
+								  vertices.data());
+
+	if (status != SG_OK_COPIED_TO_DST)
+		throw std::runtime_error("Could not copy positions to vertices");
 
 	return vertices;
 }
