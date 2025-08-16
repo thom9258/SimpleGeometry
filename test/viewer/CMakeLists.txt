@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1)
-project(test-render-sdlgl-example VERSION 0.1.0)
+project(viewer VERSION 0.1.0)
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -ggdb")
 set(CMAKE_CXX_STANDARD 20)

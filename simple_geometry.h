@@ -400,6 +400,67 @@ sg_gizmo_sphere_vertices(
 	size_t* length,
 	struct sg_position* positions
 );
+	
+struct sg_gizmo_cube_info {
+	float width;
+	float height;
+	float depth;
+};
+
+/**
+ * @brief Generate vertices for a gizmo cube.
+ *
+ * @param[in]     cube      Information describing the geometry to generate.
+ * @param[out]    length    The length of required vertex buffers to supply.
+ * @param[out]    positions Vertex positions to generate.
+ *
+ * @note To get the required length for the returned vertex buffer,
+ *       provide a pointer to 'length' alongside all vertex buffer 
+ *       pointers being NULL.
+ *
+ * @note The output vertex buffer MUST be provided with a length of at-least
+ *       the returned 'length'.
+ *
+ * @return status code describing the result of evaluation.
+ */
+SG_API_EXPORT
+enum sg_status
+sg_gizmo_cube_vertices(
+	struct sg_gizmo_cube_info* cube,
+	size_t* length,
+	struct sg_position* positions
+);
+	
+struct sg_gizmo_capsule_info {
+	float height;
+	float diameter;
+};
+
+/**
+ * @brief Generate vertices for a gizmo cube.
+ *
+ * @param[in]     cube      Information describing the geometry to generate.
+ * @param[out]    length    The length of required vertex buffers to supply.
+ * @param[out]    positions Vertex positions to generate.
+ *
+ * @note To get the required length for the returned vertex buffer,
+ *       provide a pointer to 'length' alongside all vertex buffer 
+ *       pointers being NULL.
+ *
+ * @note The output vertex buffer MUST be provided with a length of at-least
+ *       the returned 'length'.
+ *
+ * @return status code describing the result of evaluation.
+ */
+SG_API_EXPORT
+enum sg_status
+sg_gizmo_capsule_vertices(
+	struct sg_gizmo_capsule_info* capsule,
+	size_t* length,
+	struct sg_position* positions
+);
+
+
 
 /** @}*/
 	
@@ -1353,7 +1414,6 @@ sg_gizmo_sphere_vertices(
 	struct sg_position* positions)
 {
 	if (!sphere) return SG_ERR_INFO_NOT_PROVIDED;
-
 	
 	if (!positions) {
 		if (!length) return SG_ERR_DSTLEN_NOT_PROVIDED;
@@ -1437,6 +1497,348 @@ sg_gizmo_sphere_vertices(
 }
 
 
+enum sg_status
+sg_gizmo_cube_vertices(
+	struct sg_gizmo_cube_info* cube,
+	size_t* length,
+	struct sg_position* positions)
+{
+	if (!cube) return SG_ERR_INFO_NOT_PROVIDED;
+	
+	if (!positions) {
+		if (!length) return SG_ERR_DSTLEN_NOT_PROVIDED;
+		
+		//*length = 12 * 3;
+		*length = 12 * 3;
+		return SG_OK_RETURNED_LENGTH;
+	}
+	
+	const float cube_width = cube->width;
+	const float cube_height = cube->height;
+	const float cube_depth = cube->depth;
+	
+	const struct sg_position ftl{
+		.x = cube_width / 2,
+		.y = cube_height / 2,
+		.z = -(cube_depth / 2) 
+	};
+	const struct sg_position ftr{
+		.x = -(cube_width / 2),
+		.y = cube_height / 2,
+		.z = -(cube_depth / 2) 
+	};
+	const struct sg_position fbl{
+		.x = cube_width / 2,
+		.y = -(cube_height / 2),
+		.z = -(cube_depth / 2) 
+	};
+	const struct sg_position fbr{
+		.x = -(cube_width / 2),
+		.y = -(cube_height / 2),
+		.z = -(cube_depth / 2) 
+	};
+	const struct sg_position btl{
+		.x = cube_width / 2,
+		.y = cube_height / 2,
+		.z = cube_depth / 2 
+	};
+	const struct sg_position btr{
+		.x = -(cube_width / 2),
+		.y = cube_height / 2,
+		.z = cube_depth / 2 
+	};
+	const struct sg_position bbl{
+		.x = cube_width / 2,
+		.y = -(cube_height / 2),
+		.z = cube_depth / 2 
+	};
+	const struct sg_position bbr{
+		.x = -(cube_width / 2),
+		.y = -(cube_height / 2),
+		.z = cube_depth / 2 
+	};
+
+	size_t count = 0;
+	positions[count++] = ftl;
+	positions[count++] = ftr;
+	positions[count++] = ftl;
+	positions[count++] = fbl;
+	positions[count++] = fbr;
+	positions[count++] = fbl;
+
+	positions[count++] = btl;
+	positions[count++] = btr;
+	positions[count++] = btl;
+	positions[count++] = bbl;
+	positions[count++] = bbr;
+	positions[count++] = bbl;
+	
+	positions[count++] = ftl;
+	positions[count++] = btl;
+	positions[count++] = ftl;
+	positions[count++] = fbl;
+	positions[count++] = bbl;
+	positions[count++] = fbl;
+	
+	positions[count++] = ftr;
+	positions[count++] = btr;
+	positions[count++] = ftr;
+	positions[count++] = fbr;
+	positions[count++] = bbr;
+	positions[count++] = fbr;
+	
+	positions[count++] = ftr;
+	positions[count++] = fbr;
+	positions[count++] = ftr;
+	positions[count++] = btr;
+	positions[count++] = bbr;
+	positions[count++] = btr;
+
+	positions[count++] = ftl;
+	positions[count++] = fbl;
+	positions[count++] = ftl;
+	positions[count++] = btl;
+	positions[count++] = bbl;
+	positions[count++] = btl;
+
+	return SG_OK_RETURNED_BUFFER;
+}
+
+enum sg_status
+sg_gizmo_capsule_vertices(
+	struct sg_gizmo_capsule_info* capsule,
+	size_t* length,
+	struct sg_position* positions)
+{
+	if (!capsule) return SG_ERR_INFO_NOT_PROVIDED;
+	
+	if (!positions) {
+		if (!length) return SG_ERR_DSTLEN_NOT_PROVIDED;
+		const size_t circles_count = 4;
+		const size_t sides_count = 4;
+		*length = (SG_GIZMO_CIRCLE_SUBDIVISIONS * 3 * circles_count) + sides_count * 3;
+		return SG_OK_RETURNED_LENGTH;
+	}
+	
+	const float sector_step = 2 * SG_PI / SG_GIZMO_CIRCLE_SUBDIVISIONS;
+	const float capsule_diameter = capsule->diameter;
+	const float radius = capsule_diameter / 2;
+	const float capsule_height = (capsule->height < radius) ? radius : capsule->height;
+	
+	size_t vertex_count = 0;
+	
+	// Generate top x band
+	
+	const size_t gizmo_half_circle = SG_GIZMO_CIRCLE_SUBDIVISIONS / 2;
+	const size_t gizmo_quarter_circle = SG_GIZMO_CIRCLE_SUBDIVISIONS / 4;
+	
+	const size_t top_x_start = gizmo_half_circle + gizmo_quarter_circle;
+	const size_t top_x_stop = SG_GIZMO_CIRCLE_SUBDIVISIONS + gizmo_quarter_circle;
+	for (size_t i = top_x_start; i < top_x_stop; i++) {
+		const float sector_angle = i * sector_step;
+		const float next_sector_angle = (i+1) * sector_step;
+		const float offset = capsule_height/2 - radius;
+
+		const struct sg_position position{
+			.x = 0,
+			.y = offset + SG_COS(sector_angle) * radius,
+			.z = SG_SIN(sector_angle) * radius
+		};
+		const struct sg_position next_position{
+			.x = 0,
+			.y = offset + SG_COS(next_sector_angle) * radius,
+			.z = SG_SIN(next_sector_angle) * radius
+		};
+		
+		positions[vertex_count + 0] = position;
+		positions[vertex_count + 1] = next_position;
+		positions[vertex_count + 2] = position;
+		vertex_count += 3;
+	}
+	
+	// Generate top y band
+	const size_t top_y_start = gizmo_half_circle + gizmo_quarter_circle;
+	const size_t top_y_stop = SG_GIZMO_CIRCLE_SUBDIVISIONS + gizmo_quarter_circle;
+	for (size_t i = top_y_start; i < top_y_stop; i++) {
+		const float sector_angle = i * sector_step;
+		const float next_sector_angle = (i+1) * sector_step;
+		const float offset = capsule_height/2 - radius;
+
+		const struct sg_position position{
+			.x = SG_SIN(sector_angle) * radius,
+			.y = offset + SG_COS(sector_angle) * radius,
+			.z = 0 
+		};
+		const struct sg_position next_position{
+			.x = SG_SIN(next_sector_angle) * radius,
+			.y = offset + SG_COS(next_sector_angle) * radius,
+			.z = 0 
+		};
+		
+		positions[vertex_count + 0] = position;
+		positions[vertex_count + 1] = next_position;
+		positions[vertex_count + 2] = position;
+		vertex_count += 3;
+	}
+	
+	
+	// Generate top y band
+	for (size_t i = 0; i < SG_GIZMO_CIRCLE_SUBDIVISIONS; i++) {
+		const float sector_angle = i * sector_step;
+		const float next_sector_angle = (i+1) * sector_step;
+
+		const struct sg_position position{
+			.x = SG_COS(sector_angle) * radius,
+			.y = capsule_height/2 - radius,
+			.z = SG_SIN(sector_angle) * radius
+		};
+		const struct sg_position next_position{
+			.x = SG_COS(next_sector_angle) * radius,
+			.y = capsule_height/2 - radius,
+			.z = SG_SIN(next_sector_angle)* radius
+		};
+		
+		positions[vertex_count + 0] = position;
+		positions[vertex_count + 1] = next_position;
+		positions[vertex_count + 2] = position;
+		vertex_count += 3;
+	}
+	
+	// Generate bot x band
+	const size_t bot_x_start = SG_GIZMO_CIRCLE_SUBDIVISIONS / 4;
+	const size_t bot_x_stop = bot_x_start + SG_GIZMO_CIRCLE_SUBDIVISIONS / 2;
+	for (size_t i = bot_x_start; i < bot_x_stop; i++) {
+		const float sector_angle = i * sector_step;
+		const float next_sector_angle = (i+1) * sector_step;
+		const float offset = -(capsule_height/2 - radius);
+
+		const struct sg_position position{
+			.x = 0,
+			.y = offset + SG_COS(sector_angle) * radius,
+			.z = SG_SIN(sector_angle) * radius
+		};
+		const struct sg_position next_position{
+			.x = 0,
+			.y = offset + SG_COS(next_sector_angle) * radius,
+			.z = SG_SIN(next_sector_angle) * radius
+		};
+		
+		positions[vertex_count + 0] = position;
+		positions[vertex_count + 1] = next_position;
+		positions[vertex_count + 2] = position;
+		vertex_count += 3;
+	}
+	
+	// Generate bot y band
+	const size_t bot_y_start = SG_GIZMO_CIRCLE_SUBDIVISIONS / 4;
+	const size_t bot_y_stop = bot_y_start + SG_GIZMO_CIRCLE_SUBDIVISIONS / 2;
+	for (size_t i = bot_y_start; i < bot_y_stop; i++) {
+		const float sector_angle = i * sector_step;
+		const float next_sector_angle = (i+1) * sector_step;
+		const float offset = -(capsule_height/2 - radius);
+
+		const struct sg_position position{
+			.x = SG_SIN(sector_angle) * radius,
+			.y = offset + SG_COS(sector_angle) * radius,
+			.z = 0 
+		};
+		const struct sg_position next_position{
+			.x = SG_SIN(next_sector_angle) * radius,
+			.y = offset + SG_COS(next_sector_angle) * radius,
+			.z = 0 
+		};
+		
+		positions[vertex_count + 0] = position;
+		positions[vertex_count + 1] = next_position;
+		positions[vertex_count + 2] = position;
+		vertex_count += 3;
+	}
+	
+	// Generate bottom band
+	for (size_t i = 0; i < SG_GIZMO_CIRCLE_SUBDIVISIONS; i++) {
+		const float sector_angle = i * sector_step;
+		const float next_sector_angle = (i+1) * sector_step;
+
+		const struct sg_position position{
+			.x = SG_COS(sector_angle) * radius,
+			.y = -(capsule_height/2 - radius),
+			.z = SG_SIN(sector_angle) * radius
+		};
+		const struct sg_position next_position{
+			.x = SG_COS(next_sector_angle) * radius,
+			.y = -(capsule_height/2 - radius),
+			.z = SG_SIN(next_sector_angle)* radius
+		};
+		
+		positions[vertex_count + 0] = position;
+		positions[vertex_count + 1] = next_position;
+		positions[vertex_count + 2] = position;
+		vertex_count += 3;
+	}
+	
+	const float side_top = (capsule_height/2 - radius);
+	const float side_bot = -(capsule_height/2 - radius);
+	
+	const struct sg_position front_bot{
+		.x = 0,
+		.y = side_bot,
+		.z = radius
+	};
+	const struct sg_position front_top{
+		.x = 0,
+		.y = side_top,
+		.z = radius
+	};
+	positions[vertex_count + 0] = front_bot;
+	positions[vertex_count + 1] = front_top;
+	positions[vertex_count + 2] = front_bot;
+	vertex_count += 3;
+
+	const struct sg_position back_bot{
+		.x = 0,
+		.y = side_bot,
+		.z = -radius
+	};
+	const struct sg_position back_top{
+		.x = 0,
+		.y = side_top,
+		.z = -radius
+	};
+	positions[vertex_count + 0] = back_bot;
+	positions[vertex_count + 1] = back_top;
+	positions[vertex_count + 2] = back_bot;
+	vertex_count += 3;
+	
+	const struct sg_position left_bot{
+		.x = -radius,
+		.y = side_bot,
+		.z = 0
+	};
+	const struct sg_position left_top{
+		.x = -radius,
+		.y = side_top,
+		.z = 0
+	};
+	positions[vertex_count + 0] = left_bot;
+	positions[vertex_count + 1] = left_top;
+	positions[vertex_count + 2] = left_bot;
+	vertex_count += 3;
+
+	const struct sg_position right_bot{
+		.x = radius,
+		.y = side_bot,
+		.z = 0
+	};
+	const struct sg_position right_top{
+		.x = radius,
+		.y = side_top,
+		.z = 0
+	};
+	positions[vertex_count + 0] = right_bot;
+	positions[vertex_count + 1] = right_top;
+	positions[vertex_count + 2] = right_bot;
+	return SG_OK_RETURNED_BUFFER;
+}
 
 struct sg_material
 sg_material_gold()

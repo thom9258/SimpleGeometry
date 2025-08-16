@@ -62,6 +62,8 @@ enum class Object
 	Cylinder,
 	GizmoCone,
 	GizmoSphere,
+	GizmoCube,
+	GizmoCapsule,
 };
 
 [[nodiscard]]
@@ -73,8 +75,12 @@ auto next(Object object)
 	case Object::Cube:        return Object::Cylinder;
 	case Object::Cylinder:    return Object::GizmoCone;
 	case Object::GizmoCone:   return Object::GizmoSphere;
-	case Object::GizmoSphere: return Object::Sphere;
+	case Object::GizmoSphere:   return Object::GizmoCapsule;
+	case Object::GizmoCapsule: return Object::Sphere;
+	case Object::GizmoCube: return Object::Sphere;
 	}
+	
+	return Object::Sphere;
 }
 
 auto operator<<(std::ostream& os, Object object)
@@ -86,8 +92,15 @@ auto operator<<(std::ostream& os, Object object)
 	case Object::Cylinder:    os << "Cylinder"; break;
 	case Object::GizmoCone:   os << "GizmoCone"; break;
 	case Object::GizmoSphere: os << "GizmoSphere"; break;
+	case Object::GizmoCube:   os << "GizmoCube"; break;
+	case Object::GizmoCapsule:   os << "GizmoCapsule"; break;
 	}
 	return os;
+}
+
+void print_state(Object object, DrawType draw_type)
+{
+	std::cout << object << " : "<< draw_type << std::endl;
 }
 
 int main(int argc, char** argv)
@@ -158,8 +171,9 @@ int main(int argc, char** argv)
 	WireframeDrawer wireframe_drawer{};
 	PhongDrawer phong_drawer{};
 	
-	Object object = Object::Cylinder;
-	DrawType draw_type = DrawType::PhongNormalWireframe;
+	Object object = Object::GizmoCapsule;
+	DrawType draw_type = DrawType::Wireframe;
+	print_state(object, draw_type);
 	bool exit = false;
 
 	while (!exit) {
@@ -186,11 +200,11 @@ int main(int argc, char** argv)
 
 				case SDLK_n:
 					draw_type = next(draw_type);
-					std::cout << object << " : "<< draw_type << std::endl;
+					print_state(object, draw_type);
 					break;
 				case SDLK_m:
 					object = next(object);
-					std::cout << object << " : "<< draw_type << std::endl;
+					print_state(object, draw_type);
 					break;
 
 				case SDLK_w:
@@ -293,6 +307,22 @@ int main(int argc, char** argv)
 			drawables.push_back(Model<NormMesh>{mesh, model});
 			normalvector_drawables.push_back(Model<NormMesh>{mesh, model});
 		}
+		else if (object == Object::GizmoCube) {
+			std::vector<VertexPosNorm> vertices = create_gizmo_cube();
+			NormMesh mesh = create_mesh(vertices, ruby_material);
+			drawables.push_back(Model<NormMesh>{mesh, model});
+			normalvector_drawables.push_back(Model<NormMesh>{mesh, model});
+		}
+		else if (object == Object::GizmoCapsule) {
+			std::vector<VertexPosNorm> vertices = create_gizmo_capsule();
+			NormMesh mesh = create_mesh(vertices, ruby_material);
+			drawables.push_back(Model<NormMesh>{mesh, model});
+			normalvector_drawables.push_back(Model<NormMesh>{mesh, model});
+		}
+		else {
+			throw std::runtime_error("impossible object is trying to be created");
+		}
+
 	
 		if (draw_type == DrawType::Phong) {
 			phong_drawer.draw(camera.view(),

@@ -317,6 +317,85 @@ std::vector<VertexPosNorm> create_gizmo_sphere()
 }
 
 [[nodiscard]]
+std::vector<VertexPosNorm> create_gizmo_cube()
+{
+	sg_status status;
+	size_t vertices_length{0};
+	
+	sg_gizmo_cube_info info{};
+	info.width = 1.0f;
+	info.height = 1.0f;
+	info.depth = 1.0f;
+	
+	status = sg_gizmo_cube_vertices(&info, &vertices_length, nullptr);
+	if (status != SG_OK_RETURNED_LENGTH)
+		throw std::runtime_error("Could not get positions size");
+	
+	std::vector<sg_position> positions(vertices_length);
+	status = sg_gizmo_cube_vertices(&info,
+									&vertices_length,
+									positions.data());
+	if (status != SG_OK_RETURNED_BUFFER)
+		throw std::runtime_error("Could not get vertices");
+
+	std::vector<VertexPosNorm> vertices(positions.size());
+
+	sg_strided_blockcopy_source_info positions_copy;
+	positions_copy.ptr = positions.data();
+	positions_copy.block_size = sizeof(positions[0]);
+	positions_copy.stride = sizeof(positions[0]);
+	positions_copy.block_count = positions.size();
+	
+	status = sg_strided_blockcopy(&positions_copy,
+								  sizeof(vertices[0]),
+								  vertices.data());
+
+	if (status != SG_OK_COPIED_TO_DST)
+		throw std::runtime_error("Could not copy positions to vertices");
+
+	return vertices;
+}
+
+[[nodiscard]]
+std::vector<VertexPosNorm> create_gizmo_capsule()
+{
+	sg_status status;
+	size_t vertices_length{0};
+	
+	sg_gizmo_capsule_info info{};
+	info.diameter = 0.5f;
+	info.height = 1.0f;
+	
+	status = sg_gizmo_capsule_vertices(&info, &vertices_length, nullptr);
+	if (status != SG_OK_RETURNED_LENGTH)
+		throw std::runtime_error("Could not get positions size");
+	
+	std::vector<sg_position> positions(vertices_length);
+	status = sg_gizmo_capsule_vertices(&info,
+									   &vertices_length,
+									   positions.data());
+	if (status != SG_OK_RETURNED_BUFFER)
+		throw std::runtime_error("Could not get vertices");
+
+	std::vector<VertexPosNorm> vertices(positions.size());
+
+	sg_strided_blockcopy_source_info positions_copy;
+	positions_copy.ptr = positions.data();
+	positions_copy.block_size = sizeof(positions[0]);
+	positions_copy.stride = sizeof(positions[0]);
+	positions_copy.block_count = positions.size();
+	
+	status = sg_strided_blockcopy(&positions_copy,
+								  sizeof(vertices[0]),
+								  vertices.data());
+
+	if (status != SG_OK_COPIED_TO_DST)
+		throw std::runtime_error("Could not copy positions to vertices");
+
+	return vertices;
+}
+
+[[nodiscard]]
 NormMesh create_mesh(std::vector<VertexPosNorm> vertices,
 					 const sg_material mat)
 {
